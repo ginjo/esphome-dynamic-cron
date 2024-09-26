@@ -19,9 +19,9 @@
 
 
 namespace esphome {
-namespace dynamicron {
+namespace dynamic_cron {
 
-static const char *TAG = "dynamicron";
+static const char *TAG = "dynamic_cron";
 
 // Forward declarations that just barely work, given singl-file code structure.
 // To push the sub-component building entirely into c++, we'll need to separate
@@ -89,7 +89,7 @@ public:
   }
   
   void dump_config() override {
-    ESP_LOGCONFIG(TAG, "Dynamicron Schedule");
+    ESP_LOGCONFIG(TAG, "Dynamic Cron Schedule");
   }
   
   
@@ -280,14 +280,6 @@ public:
   std::string getIdString() {
     return (std::string) schedule_id;
   }
-  
-  
-  // std::string getIdTrunc(int n = 1) {
-  //   std::string id_str = schedule_id;
-  //   std::string id_trunc = id_str.substr(0, n);
-  //   
-  //   return id_trunc;
-  // }
   
   
   std::string getNameString() {
@@ -568,7 +560,7 @@ public:
     set_disabled_by_default(false);
     set_icon("mdi:timer-off-outline");
     set_restore_mode(switch_::SWITCH_RESTORE_DISABLED);
-    set_component_source("dynamicron");
+    set_component_source("dynamic_cron");
     App.register_switch(this);
     App.register_component(this);
   }
@@ -610,7 +602,7 @@ public:
     set_disabled_by_default(false);
     set_icon("mdi:timer-off-outline");
     set_restore_mode(switch_::SWITCH_RESTORE_DISABLED);
-    set_component_source("dynamicron");
+    set_component_source("dynamic_cron");
     App.register_switch(this);
     App.register_component(this);
   }
@@ -651,7 +643,7 @@ public:
     //set_object_id("cron_next_sensor_");
     //set_disabled_by_default(false);
     set_icon("mdi:timer-outline");
-    set_component_source("dynamicron");
+    set_component_source("dynamic_cron");
     App.register_text_sensor(this);
     App.register_component(this);
   }
@@ -695,7 +687,7 @@ public:
     traits.set_min_length(0);
     traits.set_max_length(255);
     traits.set_mode(text::TEXT_MODE_TEXT);
-    set_component_source("dynamicron");
+    set_component_source("dynamic_cron");
     App.register_text(this);
     App.register_component(this);
   }
@@ -723,6 +715,6 @@ public:
 }; // CrontabTextField class
 
 
-} // dynamicron namespace
+} // dynamic_cron namespace
 } // esphome namespace
 

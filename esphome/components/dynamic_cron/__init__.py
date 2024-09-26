@@ -1,4 +1,5 @@
-# NOTE: Imports do not load files or paths into the build directory.
+
+# # NOTE: Imports do not load files or paths into the build directory.
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import switch, text, text_sensor
@@ -13,6 +14,14 @@ from esphome.const import (
 AUTO_LOAD = ['switch', 'text', 'text_sensor']
 MULTI_CONF = True
 
+# This isn't working, I think because there is no 'add_build_unflag' to get rid of the
+# existing conflicting flags.
+# See https://github.com/esphome/esphome/blob/21fbbc5fb9477704be8b1ec8293d2a729f7a0072/esphome/cpp_generator.py#L606
+
+cg.add_build_flag("-std=gnu++17")
+cg.add_build_flag("-fexceptions")
+cg.add_platformio_option("build_unflags", ["-fno-exceptions", "-std=gnu++11"])
+
 cg.add_library(
     name="Croncpp",
     repository="https://github.com/mariusbancila/croncpp.git",
@@ -25,19 +34,18 @@ cg.add_library(
     version=None,
 )
 
-dynamicron_ns       = cg.esphome_ns.namespace('dynamicron')
-Schedule            = dynamicron_ns.class_('Schedule', cg.Component)
-BypassSwitch        = dynamicron_ns.class_('BypassSwitch', switch.Switch, cg.Component)
-CrontabTextField    = dynamicron_ns.class_('CrontabTextField', text.Text, cg.Component)
-CronNextSensor      = dynamicron_ns.class_('CronNextSensor', text_sensor.TextSensor, cg.Component)
-IgnoreMissedSwitch  = dynamicron_ns.class_('IgnoreMissedSwitch', switch.Switch, cg.Component)
+dynamiccron_ns      = cg.esphome_ns.namespace('dynamic_cron')
+Schedule            = dynamiccron_ns.class_('Schedule', cg.Component)
+BypassSwitch        = dynamiccron_ns.class_('BypassSwitch', switch.Switch, cg.Component)
+CrontabTextField    = dynamiccron_ns.class_('CrontabTextField', text.Text, cg.Component)
+CronNextSensor      = dynamiccron_ns.class_('CronNextSensor', text_sensor.TextSensor, cg.Component)
+IgnoreMissedSwitch  = dynamiccron_ns.class_('IgnoreMissedSwitch', switch.Switch, cg.Component)
 
 CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_NAME):     cv.string,
     cv.GenerateID(CONF_ID):     cv.declare_id(Schedule),
     cv.Required(CONF_LAMBDA):   cv.returning_lambda 
 }).extend(cv.COMPONENT_SCHEMA)
-
 
 async def to_code(config):
     
@@ -65,8 +73,8 @@ async def to_code(config):
 
 
     bypass_switch = cg.RawStatement(
-      f'esphome::dynamicron::BypassSwitch *bypass_switch_{id_} = new esphome::dynamicron::BypassSwitch({id_});\n' +
-      f'bypass_switch_{id_}->set_name("{name} Disable");\n' +
+      f'esphome::dynamic_cron::BypassSwitch *bypass_switch_{id_} = new esphome::dynamic_cron::BypassSwitch({id_});\n' +
+      f'bypass_switch_{id_}->set_name("{name} - Disable");\n' +
       f'bypass_switch_{id_}->set_object_id("bypass_switch_{id_}");\n'
     )
     cg.add(bypass_switch)
@@ -76,24 +84,24 @@ async def to_code(config):
     
     
     ignore_missed_switch = cg.RawStatement(
-      f'esphome::dynamicron::IgnoreMissedSwitch *ignore_missed_switch_{id_} = new esphome::dynamicron::IgnoreMissedSwitch({id_});\n'
-      f'ignore_missed_switch_{id_}->set_name("{name} Ignore Missed");\n' +
+      f'esphome::dynamic_cron::IgnoreMissedSwitch *ignore_missed_switch_{id_} = new esphome::dynamic_cron::IgnoreMissedSwitch({id_});\n'
+      f'ignore_missed_switch_{id_}->set_name("{name} - Ignore Missed");\n' +
       f'ignore_missed_switch_{id_}->set_object_id("ignore_missed_switch_{id_}");\n'
     )
     cg.add(ignore_missed_switch)
     
     
     cron_next_sensor = cg.RawStatement(
-      f'esphome::dynamicron::CronNextSensor *cron_next_sensor_{id_} = new esphome::dynamicron::CronNextSensor({id_});\n' +
-      f'cron_next_sensor_{id_}->set_name("{name} Next Run");\n' +
+      f'esphome::dynamic_cron::CronNextSensor *cron_next_sensor_{id_} = new esphome::dynamic_cron::CronNextSensor({id_});\n' +
+      f'cron_next_sensor_{id_}->set_name("{name} - Next Run");\n' +
       f'cron_next_sensor_{id_}->set_object_id("cron_next_sensor_{id_}");\n'
     )
     cg.add(cron_next_sensor)
     
     
     crontab_text_field = cg.RawStatement(
-      f'esphome::dynamicron::CrontabTextField *crontab_text_field_{id_} = new esphome::dynamicron::CrontabTextField({id_});\n' +
-      f'crontab_text_field_{id_}->set_name("{name} Crontab");\n' +
+      f'esphome::dynamic_cron::CrontabTextField *crontab_text_field_{id_} = new esphome::dynamic_cron::CrontabTextField({id_});\n' +
+      f'crontab_text_field_{id_}->set_name("{name} - Crontab");\n' +
       f'crontab_text_field_{id_}->set_object_id("crontab_text_field_{id_}");\n'
     )
     cg.add(crontab_text_field)
