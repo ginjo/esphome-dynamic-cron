@@ -1,33 +1,36 @@
-# ESPhome Dynamic Cron Scheduler
+# ESPHome Dynamic Cron Scheduler
 
-  This ESPhome External Component provides a cron interface for scheduling anything in ESPhome.
-
-  The project was originally created to schedule ESPhome Sprinkler controllers,
-  but it can schedule anything in your ESPhome project.
+  This ESPHome External Component provides a cron interface for scheduling anything in ESPHome.
+  The project was originally created to schedule ESPHome Sprinkler controllers,
+  but it can schedule anything in your ESPHome project.
   
   Features:
   
-  * Automate trigger times entirely within ESPhome, no home-assistant required.
+  * Automate trigger times entirely within ESPHome, no home-assistant required.
   * Live editable cron expressions, no re-flash or reboot required.
   * Multiple cron expressions for each schedule instance.
-  * Multiple schedule instances to cover all of your ESPhome recurring tasks.
+  * Multiple schedule instances to cover all of your ESPHome recurring tasks.
   * Remembers missed trigger times after power failure or reboot (optional).
 
 ## Requirements
 
   This component has two dependencies, Croncpp and Preferences, but you don't need to worry about those,
-  as they are managed automatically within this library. See below for more info on those libraries.
+  as they are managed automatically within the dynamic\_cron library.
+  See below for more info on the Croncpp and Preferences libraries.
   
-  The only things to be aware of when using this library are:
+  There are two things to be aware of when using this library:
   
-  * You should define a ```time``` component in your ESPhome yaml config.
-  * ESPhome will compile using build-flags ```-std=gnu++17``` and ```-fexceptions```.
+  * You should define a ```time``` component in your ESPHome yaml config.
+    Scheduling software doesn't work well without a reliable time source.
+    
+  * ESPHome will compile using build-flags ```-std=gnu++17``` and ```-fexceptions```.
+    This should not be a problem for most ESPHome projects, however there is a possibility
+    of conflict with other external libraries that specifically disable these options.
   
-
 ## Setup
 
-  Put the following code in your ESPhome yaml config.
-  This loads the dynamic_cron library into your ESPhome project as an External Component
+  Put the following code in your ESPHome yaml config.
+  This loads the dynamic_cron library into your ESPHome project as an External Component
   and defines one or more schedule instances. Each schedule instance calls a user-defined
   lambda, when triggered by the cron scheduler.
   
@@ -75,7 +78,7 @@
     
   ### Disable Schedule
   
-  When this entity is turned ON, schedules are disabled. No other functionality of ESPhome is affected.
+  When this entity is turned ON, the schedule are disabled. No other functionality of ESPHome is affected.
   While schedules are disabled, no next-run time is calculated.
   When this element is turned OFF, schedules are activated and a new next-run time is calculated.
   
@@ -94,7 +97,7 @@
   You can create multiple Schedule instances under the dynamic\_cron section.
   For example, you may have multiple Sprinkler instances, one for lawn irrigation and one for drip irrigation.
   In this case, you might want a separate schedule for each, as each has different watering pattern requirements.
-  You can create a separate Schedule for each of these instances, and ach schedule instance will be completely
+  You can create a separate Schedule for each of these instances, and each schedule instance will be completely
   separate and independent of the others.
   
   ```
@@ -111,11 +114,11 @@
     
   ### Missed Runs
   
-  If a valid next-run was calculated at the time of a power-outage or reboot event,
-  that run will be "remembered" and started at the next power-on, if the following are ALL true:
+  If a valid next-run was stored at the time of a power-outage or reboot event,
+  that next-run will be "remembered" and started at the next power-on, if ALL of the following are true:
   
-  * Next-run is in the past.
-  * Disable-schedules is not set.
+  * The stored next-run is in the past.
+  * Disable Schedule is not set.
   * Ignore Missed is not set.
 
 ## More info on Croncpp and Preferences:
