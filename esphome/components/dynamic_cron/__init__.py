@@ -1,5 +1,3 @@
-
-# # NOTE: Imports do not load files or paths into the build directory.
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import switch, text, text_sensor
@@ -9,14 +7,11 @@ from esphome.const import (
                       CONF_LAMBDA,
                       CONF_NAME
                       )
-                          
-# Loads paths/files into the build directory.
+
+# Imports do not load files or paths into the build directory.                          
+# You need to use AUTO_LOAD.
 AUTO_LOAD = ['switch', 'text', 'text_sensor']
 MULTI_CONF = True
-
-# This isn't working, I think because there is no 'add_build_unflag' to get rid of the
-# existing conflicting flags.
-# See https://github.com/esphome/esphome/blob/21fbbc5fb9477704be8b1ec8293d2a729f7a0072/esphome/cpp_generator.py#L606
 
 cg.add_build_flag("-std=gnu++17")
 cg.add_build_flag("-fexceptions")
@@ -35,6 +30,7 @@ cg.add_library(
 )
 
 dynamiccron_ns      = cg.esphome_ns.namespace('dynamic_cron')
+# I don't think the rest of these classes are used in the py code.
 Schedule            = dynamiccron_ns.class_('Schedule', cg.Component)
 BypassSwitch        = dynamiccron_ns.class_('BypassSwitch', switch.Switch, cg.Component)
 CrontabTextField    = dynamiccron_ns.class_('CrontabTextField', text.Text, cg.Component)
@@ -47,10 +43,8 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Required(CONF_LAMBDA):   cv.returning_lambda 
 }).extend(cv.COMPONENT_SCHEMA)
 
+
 async def to_code(config):
-    
-    # name = str(config[CONF_NAME])
-    # id_  = str(config[CONF_ID])
     
     name = str(config.get(CONF_NAME, config.get(CONF_ID)))
     
@@ -67,11 +61,11 @@ async def to_code(config):
         # See here: https://stackoverflow.com/questions/23162654/c11-lambda-functions-implicit-conversion-to-bool-vs-stdfunction
         config[CONF_LAMBDA], [], '', return_type=bool
     )
-
+    
     var = cg.new_Pvariable(config[CONF_ID], name, id_, lamb)
     await cg.register_component(var, config)
-
-
+    
+    
     bypass_switch = cg.RawStatement(
       f'esphome::dynamic_cron::BypassSwitch *bypass_switch_{id_} = new esphome::dynamic_cron::BypassSwitch({id_});\n' +
       f'bypass_switch_{id_}->set_name("{name} - Disable");\n' +
@@ -105,10 +99,4 @@ async def to_code(config):
       f'crontab_text_field_{id_}->set_object_id("crontab_text_field_{id_}");\n'
     )
     cg.add(crontab_text_field)
-    
-
-    # EXAMPLES
-    # await switch.register_switch(var.bypass_switch, config)
-    # await cg.register_component(var.bypass_switch, config)
-
 

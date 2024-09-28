@@ -34,7 +34,12 @@
   and defines one or more schedule instances. Each schedule instance calls a user-defined
   lambda, when triggered by the cron scheduler.
   
-  ```my_project.yaml
+  ```yaml
+    
+    esphome:
+      ...
+      ...
+    
     external_components:
       - source:
           type: git
@@ -48,8 +53,8 @@
   ```
   
   You must return ```true``` or ```false``` from the lambda.
-  * True tells cron to update the next-run time.
-  * False will NOT update the next-run time. Be careful with this, as it could
+  * *True* tells cron to update the next-run time.
+  * *False* will NOT update the next-run time. Be careful with this, as it could
     cause excessive looping of your target action.
     
 ## Usage

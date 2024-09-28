@@ -23,10 +23,11 @@ namespace dynamic_cron {
 
 static const char *TAG = "dynamic_cron";
 
-// Forward declarations that just barely work, given singl-file code structure.
-// To push the sub-component building entirely into c++, we'll need to separate
+// Forward declarations that just barely work, given single-file code structure.
+// To push the sub-component building entirely into c++, we would need to separate
 // the code into .h and .cpp files. Otherwise we get bad-use-of-incomplete-class
-// errors at compile time.
+// errors at compile time. Currently not an issue, since we build subcomponents
+// from the py code, which the right way to do it in esphome.
 class Schedule;
 class CrontabTextField;
 class BypassSwitch;
@@ -46,15 +47,15 @@ private:
   //esphome::time::RealTimeClock* esptime;
 
   // Basic data points.
-  const char * schedule_name;
-  const char * schedule_id;
-  std::string crontab;
-  std::time_t cronnext;
-  bool bypass;
-  bool ignore_missed;
-  std::string id_hash;
-  std::time_t previous;
-  bool setup_complete;
+  const char    *schedule_name;
+  const char    *schedule_id;
+  std::string   crontab;
+  std::time_t   cronnext;
+  bool          bypass;
+  bool          ignore_missed;
+  std::string   id_hash;
+  std::time_t   previous;
+  bool          setup_complete;
   
   // Lamba for call to target action.
   // Can also receive basic function pointer.
@@ -64,6 +65,8 @@ private:
   
 public:
   
+  // These are just to hold pointers to the subcomponents.
+  // They aren't currently used or necessary, but may be nice to have in future.
   CrontabTextField    *crontab_text_field;
   BypassSwitch        *bypass_switch;
   IgnoreMissedSwitch  *ignore_missed_switch;
@@ -71,9 +74,9 @@ public:
   
   double              loop_interval; // seconds
   
-  // Esphome Component necessitities
+  // Esphome Component overrides
   void setup() override {
-    ESP_LOGD(TAG, "Setup completed for %s", schedule_name);
+    ESP_LOGD(TAG, "Setup completed for %s, with id_hash $s", schedule_name, id_hash.c_str());
     setup_complete = true;
   }
   
@@ -118,10 +121,7 @@ public:
     id_hash = getIdHash(schedule_id);
     previous = std::time(NULL);
     AddToSchedules(this);
-    loadPrefs();
-    //bypass_switch = new BypassSwitch(this);
-    
-    ESP_LOGD("schedules", "id_hash: %s", id_hash.c_str());
+    loadPrefs();    
   } // end Schedule(...) constructor.
 
 
@@ -404,7 +404,7 @@ private:
 
 
   // Loops all schedules' cronLoop() method.
-  // Deprecated. Now we use esphome loop() method that's part every Component instance.
+  // Deprecated. Now we use esphome loop() method that's part of every Component instance.
   static void CronLooper() {
     //ESP_LOGD("schedules", "CronLooper() called");
     for (auto s : Schedules()) {
@@ -414,6 +414,7 @@ private:
 
 
   // Compares cronnext with current time and calls lambda.
+  // Calls savePrefs().
   void cronLoop() {
     if (timeIsValid() && cronNextExpired()) {
       bool result = target_action_fptr();
@@ -535,13 +536,6 @@ private:
     return (("H"+ result).substr(0,15));
   }
   
-  
-  // See here for some possible help passing a const char* to the set_name() and set_id() functions:
-  // https://stackoverflow.com/questions/36230694/how-to-supply-a-const-char-argument-for-a-function-that-takes-a-char-in-c
-  // https://stackoverflow.com/questions/32872465/const-char-value-lifetime
-  // https://stackoverflow.com/questions/63542389/c-string-literal-changing-after-function-terminates
-  // https://stackoverflow.com/questions/61601872/why-do-string-literals-char-in-c-have-to-be-constants
-  
 }; // Schedule class
 
 
@@ -563,6 +557,7 @@ public:
     set_component_source("dynamic_cron");
     App.register_switch(this);
     App.register_component(this);
+    schedule->bypass_switch = this;
   }
   
   void setup() {
@@ -605,6 +600,7 @@ public:
     set_component_source("dynamic_cron");
     App.register_switch(this);
     App.register_component(this);
+    schedule->ignore_missed_switch = this;
   }
   
   void setup() {
@@ -646,6 +642,7 @@ public:
     set_component_source("dynamic_cron");
     App.register_text_sensor(this);
     App.register_component(this);
+    schedule->cron_next_sensor = this;
   }
   
   void setup() {
@@ -690,6 +687,7 @@ public:
     set_component_source("dynamic_cron");
     App.register_text(this);
     App.register_component(this);
+    schedule->crontab_text_field = this;
   }
   
   void setup() {
