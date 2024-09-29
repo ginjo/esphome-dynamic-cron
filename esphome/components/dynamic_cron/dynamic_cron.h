@@ -158,7 +158,7 @@ public:
   }  
  
 
-  // Gets human-readable time of cronnext.
+  // Gets human-readable time of cronnext field (not the calc).
   std::string cronNextString(const char* _default="") {
     if (cronnext == 0) {
       //std::string str("");
@@ -212,7 +212,7 @@ public:
   }
 
 
-  // Getter for cronnext.
+  // Getter for cronnext field.
   std::time_t getCronNext() {
     return cronnext;
   }  
@@ -234,18 +234,22 @@ public:
     }
   }
 
-  // Experimental overload sets cron_next from user input string.
+  // Experimental overload sets cron_next from user input time_t.
+  // To get time_t from user input string, use:
+  // 
+  //   std::time_t parsed = stringToTime(input);
+  //
   void setCronNext(std::time_t input) {
-    std::time_t parsed = stringToTime(input);
     if (
       timeIsValid() &&
-      timeIsValid(parsed) &&
+      timeIsValid(input) &&
       ! bypass &&
-      difftime(parsed, timeNow) > 0 &&
-      difftime(cronNextCalc(), parsed) > 0
-    ) {
-      ESP_LOGD("schedules", "Setting cronnext from input '%s' %i", input.c_str(), parsed);
-      cronnext = parsed;
+      difftime(input, timeNow()) > 0 &&
+      difftime(cronNextCalc(), input) > 0
+    ){
+      ESP_LOGD("schedules", "Setting cronnext from input '%s' %i", timeToString(input).c_str(), input);
+      cronnext = input;
+    }
     else {
       setCronNext();
     }
@@ -328,22 +332,22 @@ public:
   
   std::time_t stringToTime(std::string input) {
     //std::string timeString = "2024-09-28 16:25:00"; // Example time string
-
+  
     // Create a tm struct to store the parsed time
     struct tm tm_struct = {};
-
+  
     // Parse the time string using strptime
     if (strptime(input.c_str(), "%Y-%m-%d %H:%M:%S", &tm_struct) == nullptr) {
         ESP_LOGE("schedule", "Error parsing time string");
         return 0;
     }
-
+  
     // Convert the tm struct to a time_t value
     time_t t_time = mktime(&tm_struct);
-
+  
     // Log the time_t value
     ESP_LOGD("schedule", "Parsed time in seconds since epoch: %i", t_time);
-
+  
     return t_time;
   }
 
@@ -444,7 +448,7 @@ private:
   } // savePrefs()
 
 
-  // Loops all schedules' cronLoop() method.
+  // Calls cronLoop() method of all items in Schedules.
   // Deprecated. Now we use esphome loop() method that's part of every Component instance.
   static void CronLooper() {
     //ESP_LOGD("schedules", "CronLooper() called");
@@ -503,8 +507,7 @@ private:
 
 
   // Is current esphome time valid (synced & legit)?
-  // TODO: We need to capture the id of the user-defined time componenet,
-  // and test for validity like we originally did.
+  // We're not actually checking with ESPHome, just with the core c++ time.
   bool timeIsValid(std::time_t now = std::time(NULL)) {
     //ESP_LOGD("schedules", "About to calculate within timeIsValid()", "");
     
@@ -600,7 +603,7 @@ public:
     set_component_source("dynamic_cron");
     App.register_switch(this);
     App.register_component(this);
-    schedule->bypass_switch = &this;
+    schedule->bypass_switch = this;
   }
   
   void setup() {
@@ -643,7 +646,7 @@ public:
     set_component_source("dynamic_cron");
     App.register_switch(this);
     App.register_component(this);
-    schedule->ignore_missed_switch = &this;
+    schedule->ignore_missed_switch = this;
   }
   
   void setup() {
@@ -685,7 +688,7 @@ public:
     set_component_source("dynamic_cron");
     App.register_text_sensor(this);
     App.register_component(this);
-    schedule->cron_next_sensor = &this;
+    schedule->cron_next_sensor = this;
   }
   
   void setup() {
@@ -730,10 +733,11 @@ public:
     set_component_source("dynamic_cron");
     App.register_text(this);
     App.register_component(this);
-    schedule->crontab_text_field = &this;
+    schedule->crontab_text_field = this;
   }
   
   void setup() {
+    schedule->crontab_text_field = this;
     ESP_LOGD("CrontabTextField", "get_object_id(): %s", get_object_id().c_str());
   }
   
