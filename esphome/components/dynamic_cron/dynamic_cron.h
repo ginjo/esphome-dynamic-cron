@@ -6,6 +6,7 @@
 #include <iostream>
 #include <iomanip>
 #include <string>
+// #include <ctime> do we need this for stringToTime() ?
 #include <regex>
 #include <vector>
 #include <map>
@@ -44,7 +45,6 @@ private:
   
   // Maybe see here for polymorphic members vars:
   // https://stackoverflow.com/questions/17035951/member-variable-polymorphism-argument-by-reference
-  //esphome::time::RealTimeClock* esptime;
 
   // Basic data points.
   const char    *schedule_name;
@@ -101,7 +101,7 @@ public:
   // Otherwise, the lambda won't be converted to a simple function/pointer.
   // So, if you pass in a lambda, the [] must be empty.
   //
-  Schedule( // schedule-id, schedule-name, target-action-lambda
+  Schedule( // schedule-name, schedule-id, target-action-lambda-or-function-pointer
     const char *_name,
     const char *_id,
     bool(*_target_action_fptr)()
@@ -122,7 +122,7 @@ public:
     previous = std::time(NULL);
     AddToSchedules(this);
     loadPrefs();    
-  } // end Schedule(...) constructor.
+  } // end Schedule(...).
 
 
   // Globally accessible wrapper for access to all_schedules static var.
@@ -171,7 +171,7 @@ public:
   }
 
 
-  // Experimental - return multiple sequential cronNextCalc results, as a map of {time_t, cron-next-string}.
+  // Returns multiple sequential cronNextCalc results, as a map of {time_t, cron-next-string}.
   std::map<std::time_t, std::string> cronNextMap(int count = 1, std::string _crontab = "", std::time_t ref_time = 0) {
 
     if (_crontab == "") { _crontab = crontab; }
@@ -219,9 +219,11 @@ public:
 
 
   // Sets cron_next from crontab.
-  // TODO: Allow a user-entered value to be passed.
+  // TODO: Allow a user-entered value to be passed. See below for prototype.
   void setCronNext() {
     if (timeIsValid()) {
+      // TODO to handle custom input:
+      // if input is valid-time, ! bypass, > now, < cronNextCalc(), then cronnext=input;
       if (crontab == "" || bypass) {
         cronnext = 0;
       }
@@ -229,6 +231,23 @@ public:
         cronnext = cronNextCalc();
       }
       ESP_LOGD("schedules", "Setting cronnext for '%s' %s", schedule_id, timeToString(cronnext).c_str());
+    }
+  }
+
+  // Experimental overload sets cron_next from user input string.
+  void setCronNext(std::time_t input) {
+    std::time_t parsed = stringToTime(input);
+    if (
+      timeIsValid() &&
+      timeIsValid(parsed) &&
+      ! bypass &&
+      difftime(parsed, timeNow) > 0 &&
+      difftime(cronNextCalc(), parsed) > 0
+    ) {
+      ESP_LOGD("schedules", "Setting cronnext from input '%s' %i", input.c_str(), parsed);
+      cronnext = parsed;
+    else {
+      setCronNext();
     }
   }
 
@@ -304,6 +323,28 @@ public:
     else {
       return "";
     }
+  }
+  
+  
+  std::time_t stringToTime(std::string input) {
+    //std::string timeString = "2024-09-28 16:25:00"; // Example time string
+
+    // Create a tm struct to store the parsed time
+    struct tm tm_struct = {};
+
+    // Parse the time string using strptime
+    if (strptime(input.c_str(), "%Y-%m-%d %H:%M:%S", &tm_struct) == nullptr) {
+        ESP_LOGE("schedule", "Error parsing time string");
+        return 0;
+    }
+
+    // Convert the tm struct to a time_t value
+    time_t t_time = mktime(&tm_struct);
+
+    // Log the time_t value
+    ESP_LOGD("schedule", "Parsed time in seconds since epoch: %i", t_time);
+
+    return t_time;
   }
 
 
@@ -464,13 +505,15 @@ private:
   // Is current esphome time valid (synced & legit)?
   // TODO: We need to capture the id of the user-defined time componenet,
   // and test for validity like we originally did.
-  bool timeIsValid() {
+  bool timeIsValid(std::time_t now = std::time(NULL)) {
     //ESP_LOGD("schedules", "About to calculate within timeIsValid()", "");
-    //return id(esptime).now().is_valid();
-    //return (timeNow() > 0);
     
-    time_t now;
-    std::time(&now); // same as: now = time(NULL)
+    // We previously tested against esptime.
+    //return id(esptime).now().is_valid();
+    
+    //time_t now;
+    //std::time(&now); // same as: now = time(NULL)
+    
     struct tm now_tm;
     now_tm = *localtime(&now);
     //ESP_LOGD("schedules", "now_tm.tm_year: %i", now_tm.tm_year);
@@ -557,7 +600,7 @@ public:
     set_component_source("dynamic_cron");
     App.register_switch(this);
     App.register_component(this);
-    schedule->bypass_switch = this;
+    schedule->bypass_switch = &this;
   }
   
   void setup() {
@@ -600,7 +643,7 @@ public:
     set_component_source("dynamic_cron");
     App.register_switch(this);
     App.register_component(this);
-    schedule->ignore_missed_switch = this;
+    schedule->ignore_missed_switch = &this;
   }
   
   void setup() {
@@ -642,7 +685,7 @@ public:
     set_component_source("dynamic_cron");
     App.register_text_sensor(this);
     App.register_component(this);
-    schedule->cron_next_sensor = this;
+    schedule->cron_next_sensor = &this;
   }
   
   void setup() {
@@ -687,7 +730,7 @@ public:
     set_component_source("dynamic_cron");
     App.register_text(this);
     App.register_component(this);
-    schedule->crontab_text_field = this;
+    schedule->crontab_text_field = &this;
   }
   
   void setup() {

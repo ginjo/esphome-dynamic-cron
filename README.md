@@ -46,7 +46,7 @@
           url: https://github.com/ginjo/esphome-dynamic-cron
     
     dynamic_cron:
-      - name: Lawn
+      - name: Irrigation
         lambda: |-
           id(sprinkler_instance).start_full_cycle();
           return {true};
@@ -83,9 +83,9 @@
     
   ### Disable Schedule
   
-  When this entity is turned ON, the schedule are disabled. No other functionality of ESPHome is affected.
-  While schedules are disabled, no next-run time is calculated.
-  When this element is turned OFF, schedules are activated and a new next-run time is calculated.
+  When this entity is turned ON, the schedule is disabled. No other functionality of ESPHome is affected.
+  While a schedule is disabled, no next-run time is calculated.
+  When this element is turned OFF, the schedule is activated and a new next-run time is calculated.
   
   ### Ignore Missed
   
