@@ -23,9 +23,10 @@
   * You should define a ```time``` component in your ESPHome yaml config.
     Scheduling software doesn't work well without a reliable time source.
     
-  * ESPHome will compile using build-flags ```-std=gnu++17``` and ```-fexceptions```.
-    This should not be a problem for most ESPHome projects, however there is a possibility
-    of conflict with other external libraries that specifically disable these options.
+  * When using this library, ESPHome will compile with build-flags ```-std=gnu++17``` and
+    ```-fexceptions```. This should not be a problem for most ESPHome projects, however
+    there is a possibility of conflict with other external libraries that specifically
+    disable these options.
   
 ## Setup
 
