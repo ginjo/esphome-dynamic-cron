@@ -23,6 +23,7 @@ namespace esphome {
 namespace dynamic_cron {
 
 static const char *TAG = "dynamic_cron";
+static int TIMESTAMP;
 
 // Forward declarations that just barely work, given single-file code structure.
 // To push the sub-component building entirely into c++, we would need to separate
@@ -45,6 +46,8 @@ private:
   
   // Maybe see here for polymorphic members vars:
   // https://stackoverflow.com/questions/17035951/member-variable-polymorphism-argument-by-reference
+  //
+  // TODO: Convert all 'const char*' vars to std::string, where possible & practical.
 
   // Basic data points.
   const char    *schedule_name;
@@ -56,6 +59,11 @@ private:
   std::string   id_hash;
   std::time_t   previous;
   bool          setup_complete;
+  
+  String        crontab_default;
+  bool          bypass_default;
+  bool          ignore_missed_default;
+  bool          clear_prefs; // Clears prefs at first boot after flash.
   
   // Lamba for call to target action.
   // Can also receive basic function pointer.
@@ -76,17 +84,32 @@ public:
   
   // Esphome Component overrides
   void setup() override {
-    ESP_LOGD(TAG, "Setup completed for %s, with id_hash $s", schedule_name, id_hash.c_str());
-    setup_complete = true;
+    if (timeIsValid() && !setup_complete) {
+      initializePrefs();
+      loadPrefs();
+      ESP_LOGD(TAG, "Setup completed for %s, with id_hash %s", schedule_name, id_hash.c_str());
+      if (! timeIsValid(cronnext)) {
+        setCronNext();
+      }
+      
+      setup_complete = true;
+    }
   }
   
   void loop() override {
     std::time_t now = std::time(NULL);
     double seconds = difftime(now, previous);
     
-    if (setup_complete && seconds > loop_interval) {
-      //ESP_LOGD(TAG, "Looping: %i", now);
-      cronLoop();
+    if (seconds > loop_interval) {
+    
+      if (setup_complete) {
+        //ESP_LOGD(TAG, "Looping: %i", now);
+        cronLoop();
+      }
+      else {
+        setup();
+      }
+      
       previous = std::time(NULL);
     }
   }
@@ -109,19 +132,23 @@ public:
     schedule_name(_name),
     schedule_id(_id),
     crontab(""),
+    crontab_default(""),
     cronnext(0),
     bypass(false),
+    bypass_default(false),
     ignore_missed(false),
+    ignore_missed_default(false),
     target_action_fptr(_target_action_fptr),
     loop_interval(5),
     id_hash(""),
-    setup_complete(false)
+    setup_complete(false),
+    clear_prefs(false)
   {
     ESP_LOGD("schedules", "Initializing Schedule object '%s'", schedule_id);
-    id_hash = getIdHash(schedule_id);
+    id_hash = GetHash(schedule_id);
     previous = std::time(NULL);
     AddToSchedules(this);
-    loadPrefs();    
+    // loadPrefs();    
   } // end Schedule(...).
 
 
@@ -133,7 +160,6 @@ public:
   
   
   // Gets indexed member of Schedules.
-  // TODO: Store schedules in a map, instead of vector, and allow access by id or by name.
   static Schedule* Schedules(int index) {
     if (!Schedules().empty()) {
       return Schedules()[index];
@@ -155,7 +181,25 @@ public:
       }
     }
     return nullptr;
-  }  
+  }
+  
+  
+  static std::string GetHash(std::string input, int len = 15) {
+    
+    // Create a hash
+    //const std::string input = _input;
+    const std::hash<std::string> hasher;
+    const auto hashResult = hasher(input);
+    
+    // Convert to hex string
+    std::stringstream stream;
+    stream << std::hex << hashResult;
+    std::string result( stream.str() );
+
+    // Output substring of the hex string.
+    //std::cout<<result;
+    return (("H"+ result).substr(0,len));
+  }
  
 
   // Gets human-readable time of cronnext field (not the calc).
@@ -295,7 +339,8 @@ public:
   // Sets ignore_missed.
   bool setIgnoreMissed(bool val) {
     ignore_missed = val;
-    setCronNext();
+    // Do we really need this here?
+    //setCronNext();
     return val;
   }
   
@@ -307,6 +352,26 @@ public:
   
   std::string getNameString() {
     return schedule_name;
+  }
+  
+  
+  void setBypassDefault(bool val) {
+    bypass_default = val;
+  }
+  
+  
+  void setIgnoreMissedDefault(bool val) {
+    ignore_missed_default = val;
+  }
+  
+  
+  void setCrontabDefault(String val) {
+    crontab_default = val;
+  }
+  
+  
+  void setClearPrefs(bool val) {
+    clear_prefs = val;
   }
 
 
@@ -352,6 +417,41 @@ public:
   }
 
 
+  bool initializePrefs(bool force = false) {  // We're not using 'force' yet
+    const char *idhash = id_hash.c_str();
+    ESP_LOGD("schedules", "Opening Preferences '%s' (%s) for initialization", schedule_name, idhash);
+    
+    prefs.begin(idhash, false); // open read-write
+    int _initialized = prefs.getInt("initialized", 0);
+    // ESP_LOGD("schedules", "Preferences '%s' (%s) is comparing TIMESTAMP '%i' with prefs.initialized '%i'",
+    //           schedule_name,
+    //           idhash,
+    //           TIMESTAMP,
+    //           _initialized
+    // );
+    
+    // If the baked-in TIMESTAMP differs from the one saved in this schedule's prefs, then clear prefs.
+    // This will happen on first boot after a flash, if clear_prefs==true, unless TIMESTAMP == 0.
+    // TIMESTAMP is baked into firmware by __init__.py.
+    if (force == false && (_initialized == TIMESTAMP || TIMESTAMP == 0)) {
+      prefs.end();
+      return false;
+    }
+    else if (clear_prefs == true || force == true) {
+      bool rslt = prefs.clear() && prefs.putInt("initialized", TIMESTAMP);
+      prefs.end();
+      if (rslt) {
+        ESP_LOGD("schedules", "Initialized Preferences '%s' (%s) with stamp '%i'", schedule_name, idhash, TIMESTAMP);
+      }
+      return rslt;
+    }
+    else {
+      prefs.end();
+      return false;
+    }
+  }
+  
+  
 private:
 
   // Adds a schedule object to a globally accessible vector array 'all_schedules'.
@@ -359,8 +459,8 @@ private:
       ESP_LOGD("schedules", "Adding Schedule '%s' to Schedules vector", schedule->schedule_id);
       Schedules().push_back(schedule);
   }
-
-
+  
+  
   // Loads persistent data from esp32 nvs.
   void loadPrefs() {
     const char *idhash = id_hash.c_str();
@@ -371,14 +471,15 @@ private:
     size_t number_free_entries = prefs.freeEntries();
     ESP_LOGD("schedules", "There are %u free entries available in the namespace table '%s'", number_free_entries, idhash);
 
+    //ESP_LOGD("schedules", "Loading crontab from prefs '%s', with potential default '%s'", schedule_name, crontab_default.c_str());
     ESP_LOGD("schedules", "Loading crontab from prefs '%s'", schedule_name);
-    crontab = std::string(prefs.getString("crontab", String("0 0 0 * * *")).c_str());
+    crontab = prefs.getString("crontab", crontab_default).c_str();
 
     ESP_LOGD("schedules", "Loading ignore_missed from prefs '%s'", schedule_name);
-    ignore_missed = prefs.getBool("ignore_missed", false);
+    ignore_missed = prefs.getBool("ignore_missed", ignore_missed_default);
 
     ESP_LOGD("schedules", "Loading bypass from prefs '%s'", schedule_name);
-    bypass = prefs.getBool("bypass", false);
+    bypass = prefs.getBool("bypass", bypass_default);
 
     // This has to load after all the others, since we may need to call setCronNext(),
     // which depends on the others being loaded.
@@ -410,10 +511,10 @@ private:
 
     //ESP_LOGD("schedules", "Opening Preferences '%s' (%s) to check for changed values", schedule_name, idhash);
     prefs.begin(idhash, true); // open read-only
-    bool crontab_changed = (crontab != std::string(prefs.getString("crontab", String("0 0 0 * * *")).c_str()));
-    bool ignore_missed_changed = (ignore_missed != prefs.getBool("ignore_missed", false));
+    bool crontab_changed = (crontab != std::string(prefs.getString("crontab", crontab_default).c_str()));
+    bool ignore_missed_changed = (ignore_missed != prefs.getBool("ignore_missed", ignore_missed_default));
     bool cronnext_changed = (cronnext != (std::time_t) prefs.getDouble("cronnext", 0) && !ignore_missed);
-    bool bypass_changed = (bypass != prefs.getBool("bypass", false));
+    bool bypass_changed = (bypass != prefs.getBool("bypass", bypass_default));
     prefs.end(); // close
 
     // If any changes, then open prefs for writing.
@@ -423,22 +524,22 @@ private:
       prefs.begin(idhash, false); // open as read/write
 
       if (crontab_changed) {
-        ESP_LOGD("schedules", "Saving crontab to prefs '%s'", schedule_name);
+        ESP_LOGD("schedules", "Saving crontab to prefs '%s' (%s)", schedule_name, crontab.c_str());
         prefs.putString("crontab", String(crontab.c_str()));
       }
 
       if (ignore_missed_changed) {
-        ESP_LOGD("schedules", "Saving ignore_missed to prefs '%s'", schedule_name);
+        ESP_LOGD("schedules", "Saving ignore_missed to prefs '%s' (%d)", schedule_name, ignore_missed);
         prefs.putBool("ignore_missed", ignore_missed);
       }
 
       if (cronnext_changed) {
-        ESP_LOGD("schedules", "Saving cronnext to prefs '%s'", schedule_name);
+        ESP_LOGD("schedules", "Saving cronnext to prefs '%s' (%i)", schedule_name, cronnext);
         prefs.putDouble("cronnext", cronnext);
       }
 
       if (bypass_changed) {
-        ESP_LOGD("schedules", "Saving bypass to prefs '%s'", schedule_name);
+        ESP_LOGD("schedules", "Saving bypass to prefs '%s' (%d)", schedule_name, bypass);
         prefs.putBool("bypass", bypass);
       }
 
@@ -470,9 +571,16 @@ private:
     // We try to setCronNext() at pref loading, but timeNow() might not be valid then,
     // so we try to clean it up here. We don't want to run setCronNext(), unless
     // absolutely necessary, since we might eventually allow user-input for a one-off.
-    else if (timeIsValid() && !bypass && ignore_missed && cronnext == 0) {
-      setCronNext();
-    }
+    //
+    // If cronnext isn't updating as often as you'd like, check this out:
+    // TODO: What if we disable this? It's running more often than it needs to,
+    // especially when ignore_missed is true.
+    // Update: Initial testing with this commented out... working fine 2024-10-05.
+    // Update: Now calling setCronNext() during setup, if !isValidTime(cronnext).
+    //
+    // else if (timeIsValid() && !bypass && ignore_missed && cronnext == 0) {
+    //   setCronNext();
+    // }
     savePrefs();
   }
 
@@ -563,24 +671,6 @@ private:
 
     return start_times;
   }
-
-
-  std::string getIdHash(std::string input) {
-    
-    // Create a hash
-    //const std::string input = _input;
-    const std::hash<std::string> hasher;
-    const auto hashResult = hasher(input);
-    
-    // Convert to hex string
-    std::stringstream stream;
-    stream << std::hex << hashResult;
-    std::string result( stream.str() );
-
-    // Output substring of the hex string.
-    //std::cout<<result;
-    return (("H"+ result).substr(0,15));
-  }
   
 }; // Schedule class
 
@@ -607,7 +697,7 @@ public:
   }
   
   void setup() {
-    ESP_LOGD("BypassSwitch", "get_object_id(): %s", get_object_id().c_str());
+    //ESP_LOGD("BypassSwitch", "get_object_id(): %s", get_object_id().c_str());
   }
   
   void loop() override {
@@ -650,7 +740,7 @@ public:
   }
   
   void setup() {
-    ESP_LOGD("IgnoreMissedSwitch", "get_object_id(): %s", get_object_id().c_str());
+    //ESP_LOGD("IgnoreMissedSwitch", "get_object_id(): %s", get_object_id().c_str());
   }
   
   void loop() override {
@@ -692,7 +782,7 @@ public:
   }
   
   void setup() {
-    ESP_LOGD("CronNextSensor", "get_object_id(): %s", get_object_id().c_str());
+    //ESP_LOGD("CronNextSensor", "get_object_id(): %s", get_object_id().c_str());
   }
   
   void loop() override {
@@ -708,10 +798,6 @@ public:
   
 }; // CronNextSensor class
 
-
-// TODO: Getting this error when setting crontab in browser:
-//   [17:09:15][W][text:032]: 'Crontab' - Value set for TextCall is too short
-//   [17:09:15][W][text:041]: 'Crontab' - No value set for TextCall
 
 class CrontabTextField : public text::Text, public Component {
 public:
@@ -737,8 +823,7 @@ public:
   }
   
   void setup() {
-    schedule->crontab_text_field = this;
-    ESP_LOGD("CrontabTextField", "get_object_id(): %s", get_object_id().c_str());
+    //ESP_LOGD("CrontabTextField", "get_object_id(): %s", get_object_id().c_str());
   }
   
   void loop() override {
@@ -752,7 +837,7 @@ public:
   }
   
   void control(const std::string &_state) {
-    ESP_LOGD("schedules", "CrontabTextField::control(): %i", &_state);
+    //ESP_LOGD("schedules", "CrontabTextField::control(): %i", &_state);
     schedule->setCrontab(_state);
   }
   
