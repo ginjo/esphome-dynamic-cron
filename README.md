@@ -1,6 +1,6 @@
 # ESPHome Dynamic Cron Scheduler
 
-  This ESPHome External Component provides a cron interface for scheduling anything in ESPHome.
+  This [ESPHome](https://esphome.io) External Component provides a cron interface for scheduling anything in ESPHome.
   Live editable crontab expressions, without requiring re-flash or reboot, set this component
   apart from the built-in ESPHome cron functionality. This component works with or without
   Home Assistant.
@@ -16,9 +16,10 @@
 
 ## Requirements
 
-  This component has two dependencies, Croncpp and Preferences, but you don't need to worry about those,
-  as they are managed automatically within the dynamic\_cron library.
-  See below for more info on the Croncpp and Preferences libraries.
+  This component has two dependencies, [Croncpp](https://github.com/mariusbancila/croncpp) and
+  [Preferences](https://docs.espressif.com/projects/arduino-esp32/en/latest/api/preferences.html),
+  but you don't need to worry about these, as they are managed automatically within the
+  dynamic\_cron library. See below for more info on the Croncpp and Preferences libraries.
   
   There are two things to be aware of when using this library:
   
@@ -52,10 +53,11 @@
     dynamic_cron:
       - name: Irrigation
         lambda: |-
+          ESP_LOGD("irrigation", "Starting irrigation");
           id(sprinkler_instance).start_full_cycle();
           return {true};
-    
-    # You must return true or false from the lambda.
+          
+          # You must return true or false from the lambda.
   ```
   
 
