@@ -18,16 +18,16 @@
 
   This component has two dependencies, [Croncpp](https://github.com/mariusbancila/croncpp) and
   [Preferences](https://docs.espressif.com/projects/arduino-esp32/en/latest/api/preferences.html),
-  but you don't need to worry about these, as they are managed automatically within the
-  dynamic\_cron library. See below for more info on the Croncpp and Preferences libraries.
+  These libraries are loaded and managed automatically within the dynamic\_cron library.
+  See below for more info on the Croncpp and Preferences libraries.
   
   There are two things to be aware of when using this library:
   
-  * You should define a ```time``` component in your ESPHome yaml config.
-    Scheduling software doesn't work well without a reliable time source.
+  * You should define a `time` component in your ESPHome yaml config, as
+    scheduling software needs a reliable time source.
     
-  * When using this library, ESPHome will compile with build-flags ```-std=gnu++17``` and
-    ```-fexceptions```. This should not be a problem for most ESPHome projects, however
+  * When using this library, ESPHome will compile with build-flags `-std=gnu++17` and
+    `-fexceptions`. This should not be a problem for most ESPHome projects, however
     there is a possibility of conflict with other external libraries that specifically
     disable these options.
 
@@ -35,7 +35,7 @@
 ## Setup
 
   Put the following code in your ESPHome yaml config.
-  This loads the dynamic_cron library into your ESPHome project as an External Component
+  This loads the dynamic_cron library into the ESPHome project as an External Component
   and defines one or more schedule instances. Each schedule instance calls a user-defined
   lambda, when triggered by the cron scheduler.
   
@@ -123,16 +123,16 @@
   
 
 ## Usage
-
-  ### Cron Expressions
     
-  Once your ESP device is up and running, there will be 4 elements available for each
-  schedule instance created.
+  Once your ESP device is up and running, there will be 4 entities available for each schedule instance created.
+  These entities can be accessed through the ESPHome web server or through the API, including Home Assistant.
   
   * Crontab (text field)
   * Next-run time (text-sensor)
   * Disable schedule (switch)
   * Ignore missed (switch)
+  
+  ### Cron Expressions (crontab)
   
   Enter one or more cron expressions in the Crontab text field.
   Multiple cron expressions are separated by space-bar-space, or literally " | ".
@@ -160,7 +160,14 @@
   This setting can be helpful, if you are scheduling frequent triggers, where making up a missed one is not important.
   This setting will reduce wear on non-volatile-storage from frequent writes of the next-run time.
   
-  Also see Missed Runs below.
+  ### Missed Runs
+  
+  If a valid next-run was stored at the time of a power-outage or reboot event,
+  that next-run will be "remembered" and started at the next power-on, if ALL of the following are true:
+  
+  * The stored next-run is in the past.
+  * Disable Schedule is not set.
+  * Ignore Missed is not set.
   
   ### Multiple Schedule Instances
   
@@ -181,15 +188,6 @@
           id(sprinkler_drip).start_full_cycle();
           return {true};
   ```
-    
-  ### Missed Runs
-  
-  If a valid next-run was stored at the time of a power-outage or reboot event,
-  that next-run will be "remembered" and started at the next power-on, if ALL of the following are true:
-  
-  * The stored next-run is in the past.
-  * Disable Schedule is not set.
-  * Ignore Missed is not set.
 
 
 ## More info on Croncpp and Preferences:
