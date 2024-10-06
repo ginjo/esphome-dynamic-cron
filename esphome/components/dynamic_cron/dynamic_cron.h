@@ -50,8 +50,8 @@ private:
   // TODO: Convert all 'const char*' vars to std::string, where possible & practical.
 
   // Basic data points.
-  const char    *schedule_name;
-  const char    *schedule_id;
+  std::string   schedule_name;
+  std::string   schedule_id;
   std::string   crontab;
   std::time_t   cronnext;
   bool          bypass;
@@ -59,7 +59,6 @@ private:
   std::string   id_hash;
   std::time_t   previous;
   bool          setup_complete;
-  
   String        crontab_default;
   bool          bypass_default;
   bool          ignore_missed_default;
@@ -87,7 +86,7 @@ public:
     if (timeIsValid() && !setup_complete) {
       initializePrefs();
       loadPrefs();
-      ESP_LOGD(TAG, "Setup completed for %s, with id_hash %s", schedule_name, id_hash.c_str());
+      ESP_LOGD(TAG, "Setup completed for %s, with id_hash %s", schedule_name.c_str(), id_hash.c_str());
       if (! timeIsValid(cronnext)) {
         setCronNext();
       }
@@ -125,8 +124,8 @@ public:
   // So, if you pass in a lambda, the [] must be empty.
   //
   Schedule( // schedule-name, schedule-id, target-action-lambda-or-function-pointer
-    const char *_name,
-    const char *_id,
+    std::string _name,
+    std::string _id,
     bool(*_target_action_fptr)()
   ) :
     schedule_name(_name),
@@ -144,7 +143,7 @@ public:
     setup_complete(false),
     clear_prefs(false)
   {
-    ESP_LOGD(TAG, "Initializing Schedule object '%s'", schedule_id);
+    ESP_LOGD(TAG, "Initializing Schedule object '%s'", schedule_id.c_str());
     id_hash = GetHash(schedule_id);
     previous = std::time(NULL);
     AddToSchedules(this);
@@ -170,12 +169,13 @@ public:
   }
   
   
-  // Gets member of Schedules by schedule_id (as if it was a map).
-  static Schedule* Schedules(const char* _id) {
+  // Gets item of Schedules vector by schedule_id (as if Schedules was a map).
+  static Schedule* Schedules(std::string _id) {
     if (!Schedules().empty()) {
       for (auto& x : Schedules()) {
         //if (x->schedule_id == _id) { // compares pointers, which might be different even if value matches.
-        if (std::strcmp(x->schedule_id, _id) == 0) {
+        //if (std::strcmp(x->schedule_id, _id) == 0) { // strcmp() is for char* strings.
+        if (x->schedule_id == _id) {
           return x;
         }
       }
@@ -203,11 +203,11 @@ public:
  
 
   // Gets human-readable time of cronnext field (not the calc).
-  std::string cronNextString(const char* _default="") {
+  std::string cronNextString(std::string _default="") {
     if (cronnext == 0) {
-      //std::string str("");
-      std::string str(_default);
-      return str;
+      //std::string str(_default);
+      //return str;
+      return _default;
     }
     else {
       return timeToString(cronnext);
@@ -274,7 +274,7 @@ public:
       else {
         cronnext = cronNextCalc();
       }
-      ESP_LOGD(TAG, "Setting cronnext for '%s' %s", schedule_id, timeToString(cronnext).c_str());
+      ESP_LOGD(TAG, "Setting cronnext for '%s' %s", schedule_id.c_str(), timeToString(cronnext).c_str());
     }
   }
 
@@ -310,7 +310,7 @@ public:
 
   // Sets crontab with given string.
   std::string setCrontab(std::string str) {
-    ESP_LOGD(TAG, "Setting crontab for '%s' %s", schedule_id, str.c_str());
+    ESP_LOGD(TAG, "Setting crontab for '%s' %s", schedule_id.c_str(), str.c_str());
     crontab = str;
     setCronNext();
     return crontab;
@@ -346,7 +346,7 @@ public:
   
   
   std::string getIdString() {
-    return (std::string) schedule_id;
+    return schedule_id;
   }
   
   
@@ -386,8 +386,9 @@ public:
       char str[24];
       strftime(str, sizeof(str), "%Y-%m-%d %H:%M:%S", timetm);
       //ESP_LOGD(TAG, "From inside timeToString() function: %s", str);
-      std::string char_to_string(str);
-      return char_to_string;
+      //std::string char_to_string(str);
+      //return char_to_string;
+      return (std::string)str;
     }
     else {
       return "";
@@ -419,12 +420,12 @@ public:
 
   bool initializePrefs(bool force = false) {  // We're not using 'force' yet
     const char *idhash = id_hash.c_str();
-    ESP_LOGD(TAG, "Opening Preferences '%s' (%s) for initialization", schedule_name, idhash);
+    ESP_LOGD(TAG, "Opening Preferences '%s' (%s) for initialization", schedule_name.c_str(), idhash);
     
     prefs.begin(idhash, false); // open read-write
     int _initialized = prefs.getInt("initialized", 0);
     // ESP_LOGD(TAG, "Preferences '%s' (%s) is comparing TIMESTAMP '%i' with prefs.initialized '%i'",
-    //           schedule_name,
+    //           schedule_name.c_str(),
     //           idhash,
     //           TIMESTAMP,
     //           _initialized
@@ -441,7 +442,7 @@ public:
       bool rslt = prefs.clear() && prefs.putInt("initialized", TIMESTAMP);
       prefs.end();
       if (rslt) {
-        ESP_LOGD(TAG, "Initialized Preferences '%s' (%s) with stamp '%i'", schedule_name, idhash, TIMESTAMP);
+        ESP_LOGD(TAG, "Initialized Preferences '%s' (%s) with stamp '%i'", schedule_name.c_str(), idhash, TIMESTAMP);
       }
       return rslt;
     }
@@ -456,7 +457,7 @@ private:
 
   // Adds a schedule object to a globally accessible vector array 'all_schedules'.
   static void AddToSchedules(Schedule* schedule) {
-      ESP_LOGD(TAG, "Adding Schedule '%s' to Schedules vector", schedule->schedule_id);
+      ESP_LOGD(TAG, "Adding Schedule '%s' to Schedules vector", schedule->schedule_id.c_str());
       Schedules().push_back(schedule);
   }
   
@@ -465,26 +466,26 @@ private:
   void loadPrefs() {
     const char *idhash = id_hash.c_str();
     
-    ESP_LOGD(TAG, "Opening Preferences '%s' (%s) for reading", schedule_name, idhash);
+    ESP_LOGD(TAG, "Opening Preferences '%s' (%s) for reading", schedule_name.c_str(), idhash);
     prefs.begin(idhash, true); // open read-only
     
     size_t number_free_entries = prefs.freeEntries();
     ESP_LOGD(TAG, "There are %u free entries available in the namespace table '%s'", number_free_entries, idhash);
 
-    //ESP_LOGD(TAG, "Loading crontab from prefs '%s', with potential default '%s'", schedule_name, crontab_default.c_str());
-    ESP_LOGD(TAG, "Loading crontab from prefs '%s'", schedule_name);
+    //ESP_LOGD(TAG, "Loading crontab from prefs '%s', with potential default '%s'", schedule_name.c_str(), crontab_default.c_str());
+    ESP_LOGD(TAG, "Loading crontab from prefs '%s'", schedule_name.c_str());
     crontab = prefs.getString("crontab", crontab_default).c_str();
 
-    ESP_LOGD(TAG, "Loading ignore_missed from prefs '%s'", schedule_name);
+    ESP_LOGD(TAG, "Loading ignore_missed from prefs '%s'", schedule_name.c_str());
     ignore_missed = prefs.getBool("ignore_missed", ignore_missed_default);
 
-    ESP_LOGD(TAG, "Loading bypass from prefs '%s'", schedule_name);
+    ESP_LOGD(TAG, "Loading bypass from prefs '%s'", schedule_name.c_str());
     bypass = prefs.getBool("bypass", bypass_default);
 
     // This has to load after all the others, since we may need to call setCronNext(),
     // which depends on the others being loaded.
     if (!ignore_missed) {
-      ESP_LOGD(TAG, "Loading cronnext from prefs '%s'", schedule_name);
+      ESP_LOGD(TAG, "Loading cronnext from prefs '%s'", schedule_name.c_str());
       cronnext = (std::time_t) prefs.getDouble("cronnext", 0);
     } else {
       // timeNow() might not be valid yet, but we'll try here anyway.
@@ -495,12 +496,12 @@ private:
 
     prefs.end(); // close
 
-    ESP_LOGD(TAG, "Schedule '%s' loaded crontab: %s", schedule_name, crontab.c_str());
-    ESP_LOGD(TAG, "Schedule '%s' loaded ignore_missed: %i", schedule_name, ignore_missed);
+    ESP_LOGD(TAG, "Schedule '%s' loaded crontab: %s", schedule_name.c_str(), crontab.c_str());
+    ESP_LOGD(TAG, "Schedule '%s' loaded ignore_missed: %i", schedule_name.c_str(), ignore_missed);
     if (!ignore_missed) {
-      ESP_LOGD(TAG, "Schedule '%s' loaded cronnext: %d (%s)", schedule_name, cronnext, timeToString(cronnext).c_str());
+      ESP_LOGD(TAG, "Schedule '%s' loaded cronnext: %d (%s)", schedule_name.c_str(), cronnext, timeToString(cronnext).c_str());
     }
-    ESP_LOGD(TAG, "Schedule '%s' loaded bypass: %i", schedule_name, bypass);
+    ESP_LOGD(TAG, "Schedule '%s' loaded bypass: %i", schedule_name.c_str(), bypass);
     
   } // loadPrefs()
 
@@ -509,7 +510,7 @@ private:
   void savePrefs() {
     const char *idhash = id_hash.c_str();
 
-    //ESP_LOGD(TAG, "Opening Preferences '%s' (%s) to check for changed values", schedule_name, idhash);
+    //ESP_LOGD(TAG, "Opening Preferences '%s' (%s) to check for changed values", schedule_name.c_str(), idhash);
     prefs.begin(idhash, true); // open read-only
     bool crontab_changed = (crontab != std::string(prefs.getString("crontab", crontab_default).c_str()));
     bool ignore_missed_changed = (ignore_missed != prefs.getBool("ignore_missed", ignore_missed_default));
@@ -520,26 +521,26 @@ private:
     // If any changes, then open prefs for writing.
     if (crontab_changed || ignore_missed_changed || cronnext_changed || bypass_changed) {
 
-      ESP_LOGD(TAG, "Opening Preferences %s (%s) for writing", schedule_name, idhash);
+      ESP_LOGD(TAG, "Opening Preferences %s (%s) for writing", schedule_name.c_str(), idhash);
       prefs.begin(idhash, false); // open as read/write
 
       if (crontab_changed) {
-        ESP_LOGD(TAG, "Saving crontab to prefs '%s' (%s)", schedule_name, crontab.c_str());
+        ESP_LOGD(TAG, "Saving crontab to prefs '%s' (%s)", schedule_name.c_str(), crontab.c_str());
         prefs.putString("crontab", String(crontab.c_str()));
       }
 
       if (ignore_missed_changed) {
-        ESP_LOGD(TAG, "Saving ignore_missed to prefs '%s' (%d)", schedule_name, ignore_missed);
+        ESP_LOGD(TAG, "Saving ignore_missed to prefs '%s' (%d)", schedule_name.c_str(), ignore_missed);
         prefs.putBool("ignore_missed", ignore_missed);
       }
 
       if (cronnext_changed) {
-        ESP_LOGD(TAG, "Saving cronnext to prefs '%s' (%i)", schedule_name, cronnext);
+        ESP_LOGD(TAG, "Saving cronnext to prefs '%s' (%i)", schedule_name.c_str(), cronnext);
         prefs.putDouble("cronnext", cronnext);
       }
 
       if (bypass_changed) {
-        ESP_LOGD(TAG, "Saving bypass to prefs '%s' (%d)", schedule_name, bypass);
+        ESP_LOGD(TAG, "Saving bypass to prefs '%s' (%d)", schedule_name.c_str(), bypass);
         prefs.putBool("bypass", bypass);
       }
 

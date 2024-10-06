@@ -57,7 +57,7 @@
           id(sprinkler_instance).start_full_cycle();
           return {true};
           
-          # You must return true or false from the lambda.
+        # You must return true or false from the lambda.
   ```
   
 
