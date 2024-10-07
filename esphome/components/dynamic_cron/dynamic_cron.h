@@ -420,10 +420,11 @@ public:
 
   bool initializePrefs(bool force = false) {  // We're not using 'force' yet
     const char *idhash = id_hash.c_str();
-    ESP_LOGD(TAG, "Opening Preferences '%s' (%s) for initialization", schedule_name.c_str(), idhash);
+    ESP_LOGD(TAG, "Opening prefs '%s' (%s) for initialization", schedule_name.c_str(), idhash);
     
     prefs.begin(idhash, false); // open read-write
     int _initialized = prefs.getInt("initialized", 0);
+    // Log output for debugging:
     // ESP_LOGD(TAG, "Preferences '%s' (%s) is comparing TIMESTAMP '%i' with prefs.initialized '%i'",
     //           schedule_name.c_str(),
     //           idhash,
@@ -434,22 +435,35 @@ public:
     // If the baked-in TIMESTAMP differs from the one saved in this schedule's prefs, then clear prefs.
     // This will happen on first boot after a flash, if clear_prefs==true, unless TIMESTAMP == 0.
     // TIMESTAMP is baked into firmware by __init__.py.
-    if (force == false && (_initialized == TIMESTAMP || TIMESTAMP == 0)) {
-      prefs.end();
-      return false;
-    }
-    else if (clear_prefs == true || force == true) {
-      bool rslt = prefs.clear() && prefs.putInt("initialized", TIMESTAMP);
-      prefs.end();
+    //
+    // if (force == false && (_initialized == TIMESTAMP || TIMESTAMP == 0)) {
+    //   rslt = false;
+    // }
+    // else if (clear_prefs == true || force == true) {
+    //   rslt = prefs.clear() && prefs.putInt("initialized", TIMESTAMP);
+    //   if (rslt) {
+    //     ESP_LOGD(TAG, "Initialized prefs '%s' (%s) with stamp '%i'", schedule_name.c_str(), idhash, TIMESTAMP);
+    //   }
+    // }
+    // else {
+    //   rslt = false;
+    // }
+    //
+    // Refactored if-then logic to reduce verbosity. Should be same logic now but less convoluted.
+    // See here for online logic calculator: https://user.eng.umd.edu/~yavuz/logiccalc.html
+    // Note that logically: !(x | y) == (!x & !y)
+    //
+    bool rslt = false;
+    
+    if (force == true || clear_prefs == true && TIMESTAMP != 0 && _initialized != TIMESTAMP) {
+      rslt = prefs.clear() && prefs.putInt("initialized", TIMESTAMP);
       if (rslt) {
-        ESP_LOGD(TAG, "Initialized Preferences '%s' (%s) with stamp '%i'", schedule_name.c_str(), idhash, TIMESTAMP);
+        ESP_LOGD(TAG, "Initialized prefs '%s' (%s) with stamp '%i'", schedule_name.c_str(), idhash, TIMESTAMP);
       }
-      return rslt;
     }
-    else {
-      prefs.end();
-      return false;
-    }
+    
+    prefs.end();
+    return rslt;
   }
   
   
@@ -466,7 +480,7 @@ private:
   void loadPrefs() {
     const char *idhash = id_hash.c_str();
     
-    ESP_LOGD(TAG, "Opening Preferences '%s' (%s) for reading", schedule_name.c_str(), idhash);
+    ESP_LOGD(TAG, "Opening prefs '%s' (%s) for reading", schedule_name.c_str(), idhash);
     prefs.begin(idhash, true); // open read-only
     
     size_t number_free_entries = prefs.freeEntries();
@@ -510,7 +524,7 @@ private:
   void savePrefs() {
     const char *idhash = id_hash.c_str();
 
-    //ESP_LOGD(TAG, "Opening Preferences '%s' (%s) to check for changed values", schedule_name.c_str(), idhash);
+    //ESP_LOGD(TAG, "Opening prefs '%s' (%s) to check for changed values", schedule_name.c_str(), idhash);
     prefs.begin(idhash, true); // open read-only
     bool crontab_changed = (crontab != std::string(prefs.getString("crontab", crontab_default).c_str()));
     bool ignore_missed_changed = (ignore_missed != prefs.getBool("ignore_missed", ignore_missed_default));
@@ -521,7 +535,7 @@ private:
     // If any changes, then open prefs for writing.
     if (crontab_changed || ignore_missed_changed || cronnext_changed || bypass_changed) {
 
-      ESP_LOGD(TAG, "Opening Preferences %s (%s) for writing", schedule_name.c_str(), idhash);
+      ESP_LOGD(TAG, "Opening prefs '%s' (%s) for writing", schedule_name.c_str(), idhash);
       prefs.begin(idhash, false); // open as read/write
 
       if (crontab_changed) {
