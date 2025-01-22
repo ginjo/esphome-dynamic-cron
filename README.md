@@ -16,8 +16,11 @@
 
 ## Requirements
 
-  This component has two dependencies, [Croncpp](https://github.com/mariusbancila/croncpp) and
-  [Preferences](https://docs.espressif.com/projects/arduino-esp32/en/latest/api/preferences.html),
+  This component has three dependencies:
+  1. [Croncpp](https://github.com/mariusbancila/croncpp)
+  2. [Preferences](https://docs.espressif.com/projects/arduino-esp32/en/latest/api/preferences.html)
+  3. The ESPHome firmware must be compiled using the Arduino framework.
+  
   These libraries are loaded and managed automatically within the dynamic\_cron library.
   See below for more info on the Croncpp and Preferences libraries.
   
