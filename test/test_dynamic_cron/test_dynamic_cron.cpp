@@ -1,6 +1,20 @@
+
+// Loading order matters.
+// If you load croncpp after ArduinoFake, it will bomb due to the macros & functions overridden by ArduinoFake.
+// So ArduinoFake (or Arduino.h) should be loaded after croncpp.
+// See https://forum.arduino.cc/t/include-chrono-causes-a-compile-error-in-an-otherwise-empty-skeleton-sketch/1147518/9
+
 #include <unity.h>
-#include <Arduino.h>
+#include <croncpp.h>
+#include <ArduinoFake.h>
+//#include <Preferences.h>
+//#include </DynamicCron/esphome/components/dynamic_cron/dynamic_cron.h.bak>
+// We'll need to remove all calls to Preferences from this core file.
+// Or, we need to mock out all Preferences calls to FS (file system),
+// since there is no FS library for linux (it's esp32 only).
 //#include </DynamicCron/esphome/components/dynamic_cron/core.h>
+
+String str = "hello";
 
 void setUp(void) {
   // set stuff up here

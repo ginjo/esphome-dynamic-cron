@@ -1,9 +1,9 @@
-// Currently NOT WORKING
+// This appears to compile and run fine with my local DynamicCron esphome test project.
+// TODO: Test this with the production Irrigation esphome project.
 
 
 #pragma once
 
-#include <Arduino.h>
 //#include <esphome.h>
 #include <croncpp.h>
 #include <iostream>
@@ -55,6 +55,7 @@ protected:
   // Lamba for call to target action.
   // Can also receive basic function pointer.
   // Can NOT take lambda captures.
+  // See the Schedule constructor (in dynamic_cron.h).
   bool(*target_action_fptr)();
   
   

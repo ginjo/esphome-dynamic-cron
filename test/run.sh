@@ -5,7 +5,7 @@
 # See below for issues running unit tests natively on linux.
 #
 # To use the above mentioned setup, enter its esphome/ dir, and run the following command:
-#   ./compose.sh run -w /DynamicCron esphome bash
+#   docker/compose.sh run -w /DynamicCron esphome /bash_session.sh
 #
 # That will launch a Docker container from esphome/esphome image into the /DynamicCron dir.
 # Then run the following command to run this script:
@@ -21,10 +21,14 @@
 # Arduino.h for testing purposes on native desktop systems.
 # I don't know if anything exists for ESPHome.
 #
-# See here:
+# See here for various information about building/testing for esp32:
+#
 #   https://community.platformio.org/t/library-testing-pio-test/20354/4
 #   https://docs.platformio.org/en/latest/advanced/unit-testing/index.html
+#   https://espressif-docs.readthedocs-hosted.com/projects/esp-idf/en/stable/api-guides/unit-tests.html
 #   https://community.platformio.org/t/problem-with-native-unit-testing-on-a-large-r-project/26683
+#   https://community.home-assistant.io/t/how-to-setup-an-ide-to-test-new-esphome-components/702814/21?u=wbr999
+#   https://github.com/FabioBatSilva/ArduinoFake
 #
 # Maybe search google for 'platformio pio test native .ini file'.
 #
@@ -39,11 +43,15 @@
 ###    ArduinoFake
 ###    unity
 ###
-###  And it turns out Preferences wont compiles (I think cuz it tries to acces file system library for NVS on esp32).
+###  And it turns out Preferences library wont compile (I think cuz it tries to acces file system library for NVS on esp32).
 ###  So if we still want to run unit tests natively (on linux), we're gonna have to move all the Preferences code
 ###  out of the new core.h file. Doing that, we'll not be testing a large and complex portion of our library.
 ###  So... do we give up on native platform unit testing, and just test the old monolithic dynamic_cron.h file on
-###  the esp32? Or should we mock all esp-dependent and any hardware-dependent classes and functions?
+###  the esp32? Or should we mock all esp-dependent and any hardware-dependent classes and functions, so we
+###  can test on the native host (linux)?
 
 pio test -vvv --without-uploading -e native -c test/platformio.ini
+
+# To clean out the build cache run:
+#   pio run --target clean -e native -c test/platformio.ini
 
