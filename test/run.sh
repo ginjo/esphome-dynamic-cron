@@ -50,7 +50,7 @@
 ###  the esp32? Or should we mock all esp-dependent and any hardware-dependent classes and functions, so we
 ###  can test on the native host (linux)?
 
-pio test -vvv --without-uploading -e native -c test/platformio.ini
+pio test --without-uploading -e native -c test/platformio.ini ${@}
 
 # To clean out the build cache run:
 #   pio run --target clean -e native -c test/platformio.ini
