@@ -60,6 +60,10 @@ void tearDown(void) {
 }
 
 
+// TESTS - Coveres most, but not all functions in core.h.
+//         Does NOT cover anything in esphome.h, as that file
+//         requires links to arduino and esphome hardware objects.
+
 void test_schedule_receives_name(void) {
   bool rslt = scheduleMockInst.callLambda();
   TEST_ASSERT_TRUE(scheduleMockInst.getNameString() == "my-name");
@@ -96,12 +100,15 @@ void test_schedule_cronNextExpired(void) {
   TEST_ASSERT_FALSE(scheduleMockInst.cronNextExpired());
   std::time_t old_time = scheduleMockInst.stringToTime("2020-01-01 14:23:45");
   scheduleMockInst.setCronNextRaw(old_time);
-  // Forced old cronnext should be considered expired.
+  // Old cronnext should be considered expired.
   TEST_ASSERT_TRUE(scheduleMockInst.cronNextExpired());
   scheduleMockInst.setCronNext(old_time);
-  // setCronNext(old_time), should be filtered out, resulting in legit cronnext.
+  // setCronNext(old_time) is not legit user operation and should be filtered out,
+  // resulting in legit cronnext.
   TEST_ASSERT_FALSE(scheduleMockInst.cronNextExpired());
 }
+
+// TODO: Cover cronLoop(), GetHash(), and Schedules(string-key).
 
 
 int runUnityTests(void) {

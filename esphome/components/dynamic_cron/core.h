@@ -278,7 +278,7 @@ public:
   }
 
 
-  // Sets bypass bool field.
+  // Sets bypass bool field and resets cronnect accordingly.
   bool setBypass(bool val) {
     bypass = val;
     setCronNext();
