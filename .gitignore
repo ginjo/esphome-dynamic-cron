@@ -2,4 +2,5 @@
 .pio/
 .platformio
 .esphome
+/core
 

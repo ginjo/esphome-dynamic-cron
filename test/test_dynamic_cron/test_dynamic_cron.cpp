@@ -18,13 +18,15 @@
 #include <thread>
 #include <unity.h>
 
+#include <croncpp.h>
+
 #if IS_NATIVE == 1
-  #include "ArduinoFake.h"
-  #include "../esphome/components/dynamic_cron/dynamic_cron.h"
+  #include <ArduinoFake.h>
+  #include <../esphome/components/dynamic_cron/dynamic_cron.h>
 #else
-  #include "esphome/core/log.h"
-  #include "esphome/core/application.h"
-  #include "../esphome/components/dynamic_cron/dynamic_cron_esphome.h"
+  #include <esphome/core/log.h>
+  #include <esphome/core/application.h>
+  #include <../esphome/components/dynamic_cron/dynamic_cron_esphome.h>
 #endif
 
 
