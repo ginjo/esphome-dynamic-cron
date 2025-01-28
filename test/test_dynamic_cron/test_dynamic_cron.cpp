@@ -1,15 +1,31 @@
+// Main c++ test file for dynamic_cron external component.
+
 // Loading order matters.
 // If you load croncpp after ArduinoFake, it will bomb due to the macros & functions overridden by ArduinoFake.
 // So ArduinoFake (or Arduino.h) should be loaded after croncpp.
 // See https://forum.arduino.cc/t/include-chrono-causes-a-compile-error-in-an-otherwise-empty-skeleton-sketch/1147518/9
+//
+// This is the main test file for the dynamic_cron component.
+// These tests use the Unity test framework.
+//   https://docs.platformio.org/en/stable/advanced/unit-testing/frameworks/unity.html
+//
+
+#ifndef IS_NATIVE
+#error "Must define IS_NATIVE in platformio.ini, either 1 or 0"
+#endif
 
 #include <chrono>
 #include <thread>
 #include <unity.h>
-#include <croncpp.h>
-#include <ArduinoFake.h>
-//#include <Preferences.h>
-#include </DynamicCron/esphome/components/dynamic_cron/core.h>
+
+#if IS_NATIVE == 1
+  #include "ArduinoFake.h"
+  #include "../esphome/components/dynamic_cron/dynamic_cron.h"
+#else
+  #include "esphome/core/log.h"
+  #include "esphome/core/application.h"
+  #include "../esphome/components/dynamic_cron/dynamic_cron_esphome.h"
+#endif
 
 
 namespace esphome {
@@ -19,7 +35,7 @@ namespace dynamic_cron {
   public:
       
     ScheduleMock() :
-      ScheduleCore("my-name", "my-id", []() { std::cout << "Test lambda called\n"; return true; })
+      ScheduleCore("test-name", "test-id", []() { std::cout << "Test lambda called\n"; return true; })
     {}
   
     bool callLambda() {
@@ -38,15 +54,19 @@ namespace dynamic_cron {
     void setCronNextRaw(std::time_t input) {
       cronnext = input;
     }
-    
+
+    void callCronLoop() {
+      cronLoop();
+    }    
   };
 
 } // esphome {
 } // dynamic_cron
 
 
-// Instantiates a ScheduleMock object with default constructor.
+// Declards (instantiates?) a ScheduleMock object with default constructor.
 esphome::dynamic_cron::ScheduleMock scheduleMockInst;
+
 
 void setUp(void) {
   // set stuff up here
@@ -60,18 +80,18 @@ void tearDown(void) {
 }
 
 
-// TESTS - Coveres most, but not all functions in core.h.
-//         Does NOT cover anything in esphome.h, as that file
+// TESTS - Covers most, but not all functions in dynamic_cron.h.
+//         Does NOT cover anything in dynamic_cron_esphome.h (yet), as that file
 //         requires links to arduino and esphome hardware objects.
 
 void test_schedule_receives_name(void) {
   bool rslt = scheduleMockInst.callLambda();
-  TEST_ASSERT_TRUE(scheduleMockInst.getNameString() == "my-name");
+  TEST_ASSERT_TRUE(scheduleMockInst.getNameString() == "test-name");
 }
 
 void test_schedule_receives_id(void) {
   bool rslt = scheduleMockInst.callLambda();
-  TEST_ASSERT_TRUE(scheduleMockInst.getIdString() == "my-id");
+  TEST_ASSERT_TRUE(scheduleMockInst.getIdString() == "test-id");
 }
 
 void test_schedule_receives_lambda(void) {
@@ -108,7 +128,22 @@ void test_schedule_cronNextExpired(void) {
   TEST_ASSERT_FALSE(scheduleMockInst.cronNextExpired());
 }
 
-// TODO: Cover cronLoop(), GetHash(), and Schedules(string-key).
+void test_schedule_cronLoop(void) {
+  std::time_t time1 = scheduleMockInst.getCronNext();
+  scheduleMockInst.callCronLoop();
+  std::time_t time2 = scheduleMockInst.getCronNext();
+  // Lambda should not have been called, and cronnext should not have changed.
+  TEST_ASSERT_EQUAL(time1, time2);
+  std::time_t old_time = scheduleMockInst.stringToTime("2020-01-01 14:23:45");
+  scheduleMockInst.setCronNextRaw(old_time);
+  scheduleMockInst.callCronLoop();
+  std::time_t new_time = scheduleMockInst.getCronNext();
+  // Lambda should have been called, and cronnext should be updated.
+  TEST_ASSERT_TRUE(new_time > old_time);
+}
+
+
+// TODO: Cover GetHash(), and Schedules(string-key).
 
 
 int runUnityTests(void) {
@@ -119,6 +154,7 @@ int runUnityTests(void) {
   RUN_TEST(test_schedule_calculates_cronnext);
   RUN_TEST(test_schedule_contains_schedules);
   RUN_TEST(test_schedule_cronNextExpired);
+  RUN_TEST(test_schedule_cronLoop);
   return UNITY_END();
 }
 
@@ -131,6 +167,8 @@ int runUnityTests(void) {
   */
 //int main(void) {
 int main( int argc, char **argv ) {
+  TEST_MESSAGE("main() running");
+  delay(2000);
   return runUnityTests();
 }
 

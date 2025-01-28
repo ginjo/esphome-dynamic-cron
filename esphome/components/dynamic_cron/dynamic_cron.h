@@ -1,10 +1,11 @@
 // This appears to compile and run fine with my local DynamicCron esphome test project.
-// TODO: Test this with the production Irrigation esphome project.
-
+// TODO: Try this with the production Irrigation esphome project.
+//
+// FIX: ArduinoMock is throwing error when testing in native mode.
+// https://github-wiki-see.page/m/Task-Tracker-Systems/Task-Tracker-Device/wiki/tipps-for-using-FakeIt
 
 #pragma once
 
-//#include <esphome.h>
 #include <croncpp.h>
 #include <iostream>
 #include <iomanip>
@@ -15,7 +16,6 @@
 #include <map>
 #include <algorithm>
 #include <time.h>
-//#include <Preferences.h>
 
 
 namespace esphome {
@@ -26,7 +26,7 @@ static int TIMESTAMP;
 
 // Forward declaration.
 class Schedule;
-class ScheduleMock; // so friend class will work
+//class ScheduleMock; // so friend class will work
 
 
 // Core definition of the schedule object.
@@ -113,7 +113,7 @@ public:
     id_hash(""),
     setup_complete(false)
   {
-    LOGD(TAG, "Initializing ScheduleCore object '%s'", schedule_id.c_str());
+    LOGD(TAG, "Initializing ScheduleCore object '%s' %s", _name.c_str(), _id.c_str());
     id_hash = GetHash(schedule_id);
     previous = std::time(NULL);
     AddToSchedules(this);
@@ -372,7 +372,8 @@ public:
   
 protected:
   
-  // This is needed here, so this file can compile independantly of ../esphome.h for testing.
+  // This is a mock function for testing.
+  // This is needed here so this file can compile independantly of ../dynamic_cron_esphome.h.
   virtual void savePrefs() {
     // nothing happening here, nothing to see...
   }

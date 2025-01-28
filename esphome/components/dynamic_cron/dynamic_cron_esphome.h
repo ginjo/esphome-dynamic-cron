@@ -1,9 +1,21 @@
-// Currently NOT WORKING
+// TODO: Fix the Preferences errors when the requested preference item
+//       Has not been stored yet (on new or repurposed esp32 boards).
+//       There is not actually any error happening, as our code handles this
+//       just fine. But the Preferences library insists on spitting out log lines
+//       making us think there is an actual error happening. This won't look good
+//       to users who flash a new esp32 board with dynamic_cron, and suddenly see
+//       a bunch or "errors".
+// TODO: If ignore_missed is enabled, but no cronnext has been saved yet,
+//       cronnext won't be saved until ignore_missed is disabled... even if there
+//       is a legit cronnext in the Schedule.cronnext field. Oh! This is because
+//       cronnext is NOT saved to prefs if ignore_missed is true, cuz there's no
+//       reason to save cronnext if we don't care about it during a power-off event.
 
 
 #pragma once
 
-#include "esphome.h"
+#include "Arduino.h"
+//#include "esphome.h"
 #include "esphome/core/component.h"
 #include <croncpp.h>
 #include <iostream>
@@ -21,7 +33,7 @@
 #include "esphome/components/text_sensor/text_sensor.h"
 #include "esphome/components/text/text.h"
 
-#include "core.h"
+#include "dynamic_cron.h"
 
 
 namespace esphome {
@@ -103,7 +115,7 @@ public:
     ScheduleCore(_name, _id, _target_action_fptr),
     clear_prefs(false)
   {
-    ESP_LOGD(TAG, "Initializing Schedule object '%s'", schedule_id.c_str());
+    ESP_LOGD(TAG, "Initializing Schedule object '%s' %s", _name.c_str(), _id.c_str());
   } // end Schedule(...).
 
 

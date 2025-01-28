@@ -9,27 +9,24 @@ upload_flags =
 
 [platformio]
 description = ESPHome 2024.7.3
-
 [env:native]
 platform = native
 test_framework = unity
 build_flags =
     -fexceptions
     -std=gnu++17
-    -D IS_NATIVE=1
 build_unflags =
     -fno-exceptions
     -std=gnu++11
 lib_compat_mode = off
-; Loading order matters!
-lib_deps =
+lib_deps = ; Loading order matters!
     Croncpp = https://github.com/mariusbancila/croncpp.git
     ArduinoFake
+;    Preferences
     ${common.lib_deps}
 test_build_src = yes
 ;lib_ldf_mode = off
-
-
+;
 ; This block was taken from the dynamicron test project's build dir.
 [env:esp32]
 board = esp32doit-devkit-v1
@@ -45,10 +42,7 @@ build_flags =
     -Wno-unused-but-set-variable
     -Wno-unused-variable
     -fexceptions
-    -fno-exceptions
     -std=gnu++17
-    -I /esphome
-    -D IS_NATIVE=0
 build_unflags =
     -fno-exceptions
     -std=gnu++11
@@ -56,6 +50,8 @@ extra_scripts =
     post:test/post_build.py
 framework = arduino
 lib_deps =
+    esphome
+;    Arduino
     Croncpp=https://github.com/mariusbancila/croncpp.git
     Preferences
     esphome/AsyncTCP-esphome@2.1.3
@@ -69,9 +65,9 @@ lib_deps =
     bblanchon/ArduinoJson@6.18.5
     ${common.lib_deps}
 lib_ldf_mode = off
-lib_compat_mode = off
 platform = platformio/espressif32@5.4.0
 platform_packages =
     platformio/framework-arduinoespressif32@~3.20005.0
 test_framework = unity
 test_build_src = yes
+

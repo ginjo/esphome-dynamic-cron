@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # This runs the DynamicCron test suite. The setup for this is currently
 # located on the private server (aws-wbr) esphome/ dir. The important parts of that will
 # eventually be included in the test/ dir here.
@@ -50,7 +52,9 @@
 ###  the esp32? Or should we mock all esp-dependent and any hardware-dependent classes and functions, so we
 ###  can test on the native host (linux)?
 
-pio test --without-uploading -e native -c test/platformio.ini ${@}
+# pio test --without-uploading -e esp32 -c test/platformio.ini
+#pio test --without-uploading -e native -c test/platformio.ini ${@}
+pio test --without-uploading -c test/platformio.ini ${@--e native}
 
 # To clean out the build cache run:
 #   pio run --target clean -e native -c test/platformio.ini
