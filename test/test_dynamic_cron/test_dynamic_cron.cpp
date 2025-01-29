@@ -39,6 +39,9 @@ namespace dynamic_cron {
     ScheduleMock() :
       ScheduleCore("test-name", "test-id", []() { std::cout << "Test lambda called\n"; return true; })
     {}
+    
+    // Added this to debug mystery exception, didn't help
+    //~ScheduleMock() noexcept(false) {}
   
     bool callLambda() {
       return target_action_fptr();
@@ -169,8 +172,7 @@ int runUnityTests(void) {
   */
 //int main(void) {
 int main( int argc, char **argv ) {
-  TEST_MESSAGE("main() running");
-  delay(2000);
+  TEST_MESSAGE("Test file main() running");
   return runUnityTests();
 }
 
@@ -178,6 +180,7 @@ int main( int argc, char **argv ) {
   * For Arduino framework
   */
 void setup() {
+  TEST_MESSAGE("Test file setup() running");
   // Wait ~2 seconds before the Unity test runner
   // establishes connection with a board Serial interface
   delay(2000);

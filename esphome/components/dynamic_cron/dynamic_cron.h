@@ -26,7 +26,7 @@ static int TIMESTAMP;
 
 // Forward declaration.
 class Schedule;
-//class ScheduleMock; // so friend class will work
+//class ScheduleMock; // so friend class will work?
 
 
 // Core definition of the schedule object.
