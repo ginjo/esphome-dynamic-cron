@@ -5,11 +5,19 @@
 //       making us think there is an actual error happening. This won't look good
 //       to users who flash a new esp32 board with dynamic_cron, and suddenly see
 //       a bunch or "errors".
-// TODO: If ignore_missed is enabled, but no cronnext has been saved yet,
-//       cronnext won't be saved until ignore_missed is disabled... even if there
-//       is a legit cronnext in the Schedule.cronnext field. Oh! This is because
-//       cronnext is NOT saved to prefs if ignore_missed is true, cuz there's no
-//       reason to save cronnext if we don't care about it during a power-off event.
+//       SEE dyncamic_cron.h file for more info on this TODO.
+//
+// NOTE: If ignore_missed is enabled, we don't save cronnext to prefs,
+//       even if legit time is in cronnext field. This is not a problem, when there is
+//       already data in the cronnext prefs field. It's only at first boot, when this issue arises.
+//
+// SOLUTION (maybe): Consolidate all prefs-retrieval calls to their own wrapper methods.
+//       Within each wrapper, figure out a way to insert dummy data into each prefs field,
+//       at boot, if the field is empty and the getter returns a default value.
+//       But not the user-facing default though. Use an internal default that indicates that the prefs
+//       field is empty. Whenever this default value is returned from the getter, return
+//       the user-facing default back to the program.
+//       
 
 
 #pragma once

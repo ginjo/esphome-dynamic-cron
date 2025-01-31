@@ -1,8 +1,22 @@
 // This appears to compile and run fine with my local DynamicCron esphome test project.
+//
 // TODO: Try this with the production Irrigation esphome project.
 //
-// FIX: ArduinoMock is throwing error when testing in native mode.
-// https://github-wiki-see.page/m/Task-Tracker-Systems/Task-Tracker-Device/wiki/tipps-for-using-FakeIt
+// TODO: Handle crontab validation. Currently when it fails Croncpp, it CRASHES the esp32.
+//
+// TODO: Figure out a way to stop polling empty prefs fields, which spits out constant log lines.
+//       This is only an issue when this component is first flashed and no settings have been saved yet.
+//       If we poll a prefs field, and nothing comes back, we should remember that as long as the
+//       device is running. We would still need to return the default value for that field,
+//       but we would stop causing Preferences to log an error(s) every loop. Apparently
+//       there is no way to tell Preferences to NOT log an error.
+//       BUT, how would we know that nothing was returned from the Preferences get() method? We
+//       would have to make the Preferences 'default' value null, or something, and then check for that.
+//       SEE dynamic_cron_esphome.h for more info and potential solution on this TODO.
+//
+//
+// Maybe see here for polymorphic members vars:
+// https://stackoverflow.com/questions/17035951/member-variable-polymorphism-argument-by-reference
 
 #pragma once
 
@@ -37,11 +51,6 @@ class ScheduleCore {
   
 protected:
   
-  // Maybe see here for polymorphic members vars:
-  // https://stackoverflow.com/questions/17035951/member-variable-polymorphism-argument-by-reference
-  //
-  // TODO: Convert all 'const char*' vars to std::string, where possible & practical.
-
   // Basic data points.
   std::string   schedule_name;
   std::string   schedule_id;
@@ -199,6 +208,8 @@ public:
     
     // TODO: Can we drop the crontab=="" condition, so we can manually set cronnext
     //       without setting a crontab? Or will that break something?
+    //       What happens now, if we set cronnext manually with an empty crontab?
+    
     if (crontab == "" || cronnext == 0 || bypass) {
       out = false;
     } else {
@@ -219,7 +230,7 @@ public:
 
 
   // Sets cronnext time_t from crontab field.
-  // TODO: Allow a user-entered value to be passed. See below for prototype.
+  // TODO: Allow a user-entered value to be passed. See below for prototype (works in tests).
   void setCronNext() {
     if (timeIsValid()) {
       //LOGD(TAG, "In setCronNext(), timeIsValid() was true");
@@ -254,6 +265,11 @@ public:
       ! bypass &&
       difftime(input, timeNow()) > 0 &&
       difftime(cronNextCalc(), input) > 0
+      // TODO: Why does input need to be < cronNextCalc()?
+      // It allows a one-off run, while still maintaining a legit crontab schedule.
+      // If no crontab exists, then input can be any time in the future. In that case,
+      // we need to make sure to clear out the manuall cronnext after it's used,
+      // otherwise it'll trigger with every loop.
     ){
       //LOGD(TAG, "Setting cronnext from input '%s' %i", timeToString(input).c_str(), input);
       cronnext = input;
@@ -439,7 +455,7 @@ protected:
     // absolutely necessary, since we might eventually allow user-input for a one-off.
     //
     // If cronnext isn't updating as often as you'd like, check this out:
-    // TODO: What if we disable this? It's running more often than it needs to,
+    // TODO (done!): What if we disable this? It's running more often than it needs to,
     // especially when ignore_missed is true.
     // Update: Initial testing with this commented out... working fine 2024-10-05.
     // Update: Now calling setCronNext() during setup, if !isValidTime(cronnext).

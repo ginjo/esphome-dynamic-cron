@@ -19,6 +19,9 @@
 // TODO: Let's stop manipulating system time. It affects the host - BAD.
 //
 // TODO: Split tests with multiple assertions into their own test.
+//
+// FIX: ArduinoMock is throwing error when testing in native mode.
+// https://github-wiki-see.page/m/Task-Tracker-Systems/Task-Tracker-Device/wiki/tipps-for-using-FakeIt
 
 
 #ifndef IS_NATIVE
