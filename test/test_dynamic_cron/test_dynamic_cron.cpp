@@ -6,9 +6,20 @@
 // See https://forum.arduino.cc/t/include-chrono-causes-a-compile-error-in-an-otherwise-empty-skeleton-sketch/1147518/9
 //
 // This is the main test file for the dynamic_cron component.
+// See https://interrupt.memfault.com/blog/unit-testing-basics
+///
 // These tests use the Unity test framework.
 //   https://docs.platformio.org/en/stable/advanced/unit-testing/frameworks/unity.html
+//   https://registry.platformio.org/libraries/throwtheswitch/Unity
 //
+// If you foul up the system time, you can do this on debian to restore it:
+//   sudo apt-get install ntpdate
+//   sudo ntpdate -u pool.ntp.org # (or 169.254.169.123 if on AWS EC2)
+//
+// TODO: Let's stop manipulating system time. It affects the host - BAD.
+//
+// TODO: Split tests with multiple assertions into their own test.
+
 
 #ifndef IS_NATIVE
 #error "Must define IS_NATIVE in platformio.ini, either 1 or 0"
@@ -29,124 +40,196 @@
   #include <../esphome/components/dynamic_cron/dynamic_cron_esphome.h>
 #endif
 
+// We already load 'time.h' and 'ctime' in dynamic_cron.h
+// This is for direct manipulation of system time using timeval struct.
+#include <sys/time.h>
 
-namespace esphome {
-namespace dynamic_cron {
+// Finally, see here for faketime library, which could help isolate datetime manipulations:
+//   https://github.com/wolfcw/libfaketime
+
+
+class ScheduleMock : public esphome::dynamic_cron::ScheduleCore {
+public:
+    
+  ScheduleMock() :
+    ScheduleCore("test-name", "test-id", []() { std::cout << "Test lambda called\n"; return true; })
+  {}
   
-  class ScheduleMock : public ScheduleCore {
-  public:
-      
-    ScheduleMock() :
-      ScheduleCore("test-name", "test-id", []() { std::cout << "Test lambda called\n"; return true; })
-    {}
-    
-    // Added this to debug mystery exception, didn't help
-    //~ScheduleMock() noexcept(false) {}
+  // Added this destructor to debug mystery exception, didn't help
+  //~ScheduleMock() noexcept(false) {}
+
+  bool callLambda() {
+    return target_action_fptr();
+  }
   
-    bool callLambda() {
-      return target_action_fptr();
-    }
-    
-    // Helper method to access protected ScheduleCore::splitString().
-    // Returns single member of string vector from splitString() function.
-    std::string getStringVectorMember(std::string _string, std::string _regexp, size_t index) {
-      std::string result = splitString(_string, _regexp)[index];
-      return result;
-    }
-    
-    // Helper method to set cronnext with older time,
-    // since the official setCronNext() won't allow it.
-    void setCronNextRaw(std::time_t input) {
-      cronnext = input;
-    }
+  // Helper method to access protected ScheduleCore::splitString().
+  // Returns single member of string vector from splitString() function.
+  std::string getStringVectorMember(std::string _string, std::string _regexp, size_t index) {
+    if (_string == "") { return ""; }
+    std::string result = splitString(_string, _regexp)[index];
+    return result;
+  }
+  
+  // Helper method to set cronnext with older time,
+  // since the official setCronNext() is protected.
+  void setCronNextRaw(std::time_t input) {
+    cronnext = input;
+  }
 
-    void callCronLoop() {
-      cronLoop();
-    }    
-  };
+  // Cuz cronLoop() is protected.
+  void callCronLoop() {
+    cronLoop();
+  }    
+};
 
-} // esphome {
-} // dynamic_cron
+// Declards a ScheduleMock object with default constructor.
+// This will be used during each test run. See setUp().
+ScheduleMock* ScheduleMockInst = nullptr;
+
+void initScheduleMock(ScheduleMock* obj) {
+  //std::cout << "inside initScheduleMock()";
+  ScheduleMockInst = obj;
+}
 
 
-// Declards (instantiates?) a ScheduleMock object with default constructor.
-esphome::dynamic_cron::ScheduleMock scheduleMockInst;
 
+int getSystemTime() {
+  struct timeval tv;
+  gettimeofday(&tv, nullptr);
+
+  // Convert to time_t
+  time_t now = tv.tv_sec;
+
+  // Use ctime to get a string representation
+  std::string timeString = ctime(&now);
+
+  // Remove trailing newline
+  timeString.erase(timeString.size() - 1);
+
+  // Append microseconds
+  timeString += "." + std::to_string(tv.tv_usec);
+
+  std::cout << timeString << std::endl;
+
+  return 0;
+}
+
+// Not using?
+//std::time_t* OriginalTime = nullptr;
+
+// Sets system clock to a specific time, given seconds-since-epoch.
+// Search google for 'c++ settimeofday()' and AI will show you about this.
+//
+int setSystemTime(int seconds = 1600000000) { // 2020-09-13 12:26:40
+  struct timeval tv;
+  tv.tv_sec = seconds; // Set a specific time (seconds since Epoch)
+  tv.tv_usec = 0;
+  std::cout << "Setting system time: " << ScheduleMockInst->timeToString((std::time_t)seconds).c_str() << "\n";
+  return settimeofday(&tv, NULL);
+}
+
+void printSystemTime() {
+  std::time_t now = std::time(NULL);
+  std::cout << "System time: " << ScheduleMockInst->timeToString(now).c_str() << "\n";
+}
 
 void setUp(void) {
-  // set stuff up here
+  // Performed before ever test is run.
   
-  // Will do this for every test, if we need it.
-  //esphome::dynamic_cron::ScheduleMock scheduleMockInst;
+  std::cout << "SETUP\n";
+  //OriginalTime = new std::time_t(NULL);
+  //std::cout << "OriginalTime: " << ScheduleMockInst->timeToString(*OriginalTime).c_str() << "\n";
+  //setSystemTime();
+  
+  // Wee need to use dynamic (heap?) memory,
+  // otherwise the object goes out of scope and is deleted,
+  // even though the var is declared at the top-level.
+  // This way, the object persists until we delete it.
+  // Note: I think 'new' always returns a pointer.
+  ScheduleMockInst = new ScheduleMock;
 }
 
 void tearDown(void) {
-  // clean stuff up here
+  // Performed after every test is run.
+  
+  std::cout << "TEARDOWN\n";
+  //setSystemTime(*OriginalTime);
+  
+  delete ScheduleMockInst;
+  //delete OriginalTime;
 }
 
 
-// TESTS - Covers most, but not all functions in dynamic_cron.h.
+// TESTS - Covers most but not all functions in dynamic_cron.h, either directly or indirectly.
 //         Does NOT cover anything in dynamic_cron_esphome.h (yet), as that file
 //         requires links to arduino and esphome hardware objects.
 
 void test_schedule_receives_name(void) {
-  bool rslt = scheduleMockInst.callLambda();
-  TEST_ASSERT_TRUE(scheduleMockInst.getNameString() == "test-name");
+  TEST_ASSERT_TRUE(ScheduleMockInst->getNameString() == "test-name");
 }
 
 void test_schedule_receives_id(void) {
-  bool rslt = scheduleMockInst.callLambda();
-  TEST_ASSERT_TRUE(scheduleMockInst.getIdString() == "test-id");
+  //std::cout << "Running a test";
+  TEST_ASSERT_TRUE(ScheduleMockInst->getIdString() == "test-id");
 }
 
 void test_schedule_receives_lambda(void) {
-  bool rslt = scheduleMockInst.callLambda();
+  bool rslt = ScheduleMockInst->callLambda();
   TEST_ASSERT_TRUE(rslt);
-  //TEST_MESSAGE("HI!!!");
-}
-
-void test_schedule_calculates_cronnext(void) {
-  scheduleMockInst.setCrontab("1 2 3 * * *");
-  std::string cron_next = scheduleMockInst.cronNextString();
-  std::string time_only = scheduleMockInst.getStringVectorMember(cron_next, " ", 1);
-  //TEST_MESSAGE(cron_next.c_str());
-  //TEST_MESSAGE(time_only.c_str());
-  TEST_ASSERT_TRUE(time_only == "03:02:01");
 }
 
 void test_schedule_contains_schedules(void) {
   // Outputs the Schedules() array size, for debugging.
   //std::cout << esphome::dynamic_cron::ScheduleCore::Schedules().size();
-  TEST_ASSERT_TRUE(esphome::dynamic_cron::ScheduleCore::Schedules()[0] == &scheduleMockInst);
+  TEST_ASSERT_TRUE(esphome::dynamic_cron::ScheduleCore::Schedules()[0] == ScheduleMockInst);
+}
+
+void test_schedule_calculates_cronnext(void) {
+  ScheduleMockInst->setCrontab("1 2 3 * * *");
+  std::string cron_next = ScheduleMockInst->cronNextString();
+  std::string now = ScheduleMockInst->timeToString();
+  std::string time_only = ScheduleMockInst->getStringVectorMember(cron_next, " ", 1);
+  //TEST_MESSAGE(now.c_str());
+  //TEST_MESSAGE(cron_next.c_str());
+  //TEST_MESSAGE(time_only.c_str());
+  // I don't think we need to manually convert the constant to std::string,
+  // as I'm pretty sure std::string operator== handles that.
+  TEST_ASSERT_TRUE(time_only == (std::string)"03:02:01");
 }
 
 void test_schedule_cronNextExpired(void) {
+  ScheduleMockInst->setCrontab("1 2 3 * * *");
   // Default cronnext should be legit.
-  TEST_ASSERT_FALSE(scheduleMockInst.cronNextExpired());
-  std::time_t old_time = scheduleMockInst.stringToTime("2020-01-01 14:23:45");
-  scheduleMockInst.setCronNextRaw(old_time);
+  TEST_ASSERT_FALSE(ScheduleMockInst->cronNextExpired());
   // Old cronnext should be considered expired.
-  TEST_ASSERT_TRUE(scheduleMockInst.cronNextExpired());
-  scheduleMockInst.setCronNext(old_time);
-  // setCronNext(old_time) is not legit user operation and should be filtered out,
+  std::time_t old_time = ScheduleMockInst->stringToTime("2020-01-01 12:34:56");
+  ScheduleMockInst->setCronNextRaw(old_time);
+  TEST_ASSERT_TRUE(ScheduleMockInst->cronNextExpired());
+  // Missing crontab prevents expired from returning true, even if cronnext is expired.
+  // Do we really want that?
+  ScheduleMockInst->setCrontab("");
+  TEST_ASSERT_FALSE(ScheduleMockInst->cronNextExpired());
+  // setCronNext() with an old time is not legit user operation and will be filtered out.
   // resulting in legit cronnext.
-  TEST_ASSERT_FALSE(scheduleMockInst.cronNextExpired());
+  ScheduleMockInst->setCrontab("1 2 3 * * *");
+  ScheduleMockInst->setCronNext(old_time);
+  TEST_ASSERT_FALSE(ScheduleMockInst->cronNextExpired());
 }
 
 void test_schedule_cronLoop(void) {
-  std::time_t time1 = scheduleMockInst.getCronNext();
-  scheduleMockInst.callCronLoop();
-  std::time_t time2 = scheduleMockInst.getCronNext();
-  // Lambda should not have been called, and cronnext should not have changed.
-  TEST_ASSERT_EQUAL(time1, time2);
-  std::time_t old_time = scheduleMockInst.stringToTime("2020-01-01 14:23:45");
-  scheduleMockInst.setCronNextRaw(old_time);
-  scheduleMockInst.callCronLoop();
-  std::time_t new_time = scheduleMockInst.getCronNext();
-  // Lambda should have been called, and cronnext should be updated.
-  TEST_ASSERT_TRUE(new_time > old_time);
+  // cronnext should not have changed (and lambda should not have been called).
+  ScheduleMockInst->setCrontab("1 2 3 * * *");
+  std::time_t cronnext1 = ScheduleMockInst->getCronNext();
+  ScheduleMockInst->callCronLoop();
+  std::time_t cronnext2 = ScheduleMockInst->getCronNext();
+  TEST_ASSERT_TRUE(std::difftime(cronnext1, cronnext2) == 0);
+  // cronnext should have changed (and lambda should have been called).
+  std::time_t old_time = ScheduleMockInst->stringToTime("2020-01-01 12:34:56");
+  ScheduleMockInst->setCronNextRaw(old_time);
+  ScheduleMockInst->callCronLoop();
+  std::time_t new_time = ScheduleMockInst->getCronNext();
+  TEST_ASSERT_TRUE(std::difftime(new_time, old_time) > 0);
 }
-
 
 // TODO: Cover GetHash(), and Schedules(string-key).
 
@@ -156,8 +239,8 @@ int runUnityTests(void) {
   RUN_TEST(test_schedule_receives_name);
   RUN_TEST(test_schedule_receives_id);
   RUN_TEST(test_schedule_receives_lambda);
-  RUN_TEST(test_schedule_calculates_cronnext);
   RUN_TEST(test_schedule_contains_schedules);
+  RUN_TEST(test_schedule_calculates_cronnext);
   RUN_TEST(test_schedule_cronNextExpired);
   RUN_TEST(test_schedule_cronLoop);
   return UNITY_END();
@@ -172,15 +255,25 @@ int runUnityTests(void) {
   */
 //int main(void) {
 int main( int argc, char **argv ) {
-  TEST_MESSAGE("Test file main() running");
+  getSystemTime();
+  
+  #if IS_NATIVE != 1
+    setSystemTime();
+  #endif
+  
   return runUnityTests();
 }
 
 /**
   * For Arduino framework
   */
-void setup() {
-  TEST_MESSAGE("Test file setup() running");
+void setup() {  
+  getSystemTime();
+  
+  #if IS_NATIVE != 1
+    setSystemTime();
+  #endif
+  
   // Wait ~2 seconds before the Unity test runner
   // establishes connection with a board Serial interface
   delay(2000);

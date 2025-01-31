@@ -10,7 +10,7 @@
 #include <iostream>
 #include <iomanip>
 #include <string>
-// #include <ctime> // do we need this for stringToTime() ?
+#include <ctime> // used for the time 'tm' struct
 #include <regex>
 #include <vector>
 #include <map>
@@ -197,6 +197,8 @@ public:
     std::time_t now = timeNow();
     bool out = false;
     
+    // TODO: Can we drop the crontab=="" condition, so we can manually set cronnext
+    //       without setting a crontab? Or will that break something?
     if (crontab == "" || cronnext == 0 || bypass) {
       out = false;
     } else {
@@ -216,19 +218,26 @@ public:
   }  
 
 
-  // Sets cronnext time_t from crontab.
+  // Sets cronnext time_t from crontab field.
   // TODO: Allow a user-entered value to be passed. See below for prototype.
   void setCronNext() {
     if (timeIsValid()) {
+      //LOGD(TAG, "In setCronNext(), timeIsValid() was true");
       // TODO to handle custom input:
       // if input is valid-time, ! bypass, > now, < cronNextCalc(), then cronnext=input;
-      if (crontab == "" || bypass) {
+      if (crontab == (std::string)"" || bypass) {
         cronnext = 0;
       }
       else {
+        LOGD(TAG, "Setting cronnext for '%s' %s [%i, %s]",
+          schedule_name.c_str(),
+          schedule_id.c_str(),
+          cronnext,
+          timeToString(cronnext).c_str()
+        );
+        
         cronnext = cronNextCalc();
       }
-      LOGD(TAG, "Setting cronnext for '%s' %s", schedule_id.c_str(), timeToString(cronnext).c_str());
     }
   }
 
@@ -246,10 +255,24 @@ public:
       difftime(input, timeNow()) > 0 &&
       difftime(cronNextCalc(), input) > 0
     ){
-      LOGD(TAG, "Setting cronnext from input '%s' %i", timeToString(input).c_str(), input);
+      //LOGD(TAG, "Setting cronnext from input '%s' %i", timeToString(input).c_str(), input);
       cronnext = input;
+      
+      LOGD(TAG, "Setting cronnext for '%s' %s [%i, %s]",
+        schedule_name.c_str(),
+        schedule_id.c_str(),
+        input,
+        timeToString(input).c_str()
+      );
     }
     else {
+      LOGD(TAG, "setCronNext() skipping invalid input '%s' %s [%i, %s]",
+        schedule_name.c_str(),
+        schedule_id.c_str(),
+        input,
+        timeToString(input).c_str()
+      );
+      
       setCronNext();
     }
   }
@@ -265,7 +288,7 @@ public:
 
   // Sets crontab with given string.
   std::string setCrontab(std::string str) {
-    LOGD(TAG, "Setting crontab for '%s' %s", schedule_id.c_str(), str.c_str());
+    LOGD(TAG, "Setting crontab for '%s' %s [%s]", schedule_name.c_str(), schedule_id.c_str(), str.c_str());
     crontab = str;
     setCronNext();
     return crontab;
@@ -331,15 +354,17 @@ public:
   // See here for printing time_t data:
   //   https://stackoverflow.com/questions/18422384/how-to-print-time-t-in-a-specific-format
   std::string timeToString(std::time_t timet = std::time(NULL)) {
-    if (timeIsValid()) {
+    // I disabled the timeIsValid() check here to prevent circular definition,
+    // since I want to use timeToString() in the timeIsValid() funcion.
+    // If we need to re-activate timeIsValid() here, remove timeToString() from timeIsValid().
+    //
+    if (timet != 0) {   //timeIsValid()) {
       struct tm * timetm;
       // Converts time_t to tm (a fancy time object), cuz that's what strftime wants.
       timetm = localtime(&timet);
       char str[24];
       strftime(str, sizeof(str), "%Y-%m-%d %H:%M:%S", timetm);
-      //LOGD(TAG, "From inside timeToString() function: %s", str);
-      //std::string char_to_string(str);
-      //return char_to_string;
+      //LOGD(TAG, "From inside timeToString() '%s'", str);
       return (std::string)str;
     }
     else {
@@ -364,7 +389,9 @@ public:
     time_t t_time = mktime(&tm_struct);
   
     // Log the time_t value
-    LOGD(TAG, "Parsed time in seconds since epoch: %i", t_time);
+    //LOGD(TAG, "stringToTime() parsed time '%s' in seconds since epoch: %i", input.c_str(), t_time);
+    // Log the reverse operation.
+    //LOGD(TAG, "stringToTime() reverse operation: %s", timeToString(t_time).c_str());
   
     return t_time;
   }
@@ -382,7 +409,7 @@ protected:
   // Adds a schedule object to a globally accessible vector array 'all_schedules'.
   // Are we still using this?
   static void AddToSchedules(ScheduleCore* schedule) {
-      LOGD(TAG, "Adding Schedule '%s' to Schedules vector", schedule->schedule_id.c_str());
+      LOGD(TAG, "Adding Schedule '%s' %s to Schedules vector", schedule->schedule_name.c_str(), schedule->schedule_id.c_str());
       Schedules().push_back(schedule);
   }
   
@@ -453,7 +480,7 @@ protected:
   }
 
 
-  // Is current esphome time valid (synced & legit)?
+  // Is current (or given) time valid (synced & legit)?
   // We're not actually checking with ESPHome, just with the core c++ time.
   bool timeIsValid(std::time_t now = std::time(NULL)) {
     //LOGD(TAG, "About to calculate within timeIsValid()", "");
@@ -467,7 +494,15 @@ protected:
     struct tm now_tm;
     now_tm = *localtime(&now);
     //LOGD(TAG, "now_tm.tm_year: %i", now_tm.tm_year);
-    return ((now_tm.tm_year + 1900) > 2020);
+    
+    // Valid if year is >= 1969 (1970 is the start of 'epoch' time).
+    bool rslt = ((now_tm.tm_year + 1900) > 1969);
+    
+    if (! rslt) {
+      LOGE(TAG, "timeIsValid() failed with '%s'", timeToString(now).c_str());
+    };
+    
+    return rslt;
   }
 
 
