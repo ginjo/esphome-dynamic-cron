@@ -192,12 +192,23 @@ void test_schedule_calculates_cronnext(void) {
   std::string cron_next = ScheduleMockInst->cronNextString();
   std::string now = ScheduleMockInst->timeToString();
   std::string time_only = ScheduleMockInst->getStringVectorMember(cron_next, " ", 1);
+  // Test-message is not supported in the Unity framework provided with platformio.
   //TEST_MESSAGE(now.c_str());
   //TEST_MESSAGE(cron_next.c_str());
   //TEST_MESSAGE(time_only.c_str());
-  // I don't think we need to manually convert the constant to std::string,
-  // as I'm pretty sure std::string operator== handles that.
-  TEST_ASSERT_TRUE(time_only == (std::string)"03:02:01");
+  TEST_ASSERT_TRUE(time_only == "03:02:01");
+  // Bad crontab should be handled
+  ScheduleMockInst->setCrontab("1 2 3 * * * | foo bar baz");
+  TEST_ASSERT_TRUE(ScheduleMockInst->getCronNext() == (std::time_t)0);
+  // Fixed crontab should resolve
+  ScheduleMockInst->setCrontab("1 2 3 * * *");
+  TEST_ASSERT_TRUE(ScheduleMockInst->getCronNext() > (std::time_t)0);
+  // Bypassed schedule should have no cronnext
+  ScheduleMockInst->setBypass(true);
+  TEST_ASSERT_TRUE(ScheduleMockInst->getCronNext() == (std::time_t)0);
+  // Re-enabled schedule should resolve
+  ScheduleMockInst->setBypass(false);
+  TEST_ASSERT_TRUE(ScheduleMockInst->getCronNext() > (std::time_t)0);
 }
 
 void test_schedule_cronNextExpired(void) {

@@ -2,7 +2,7 @@
 //
 // TODO: Try this with the production Irrigation esphome project.
 //
-// TODO: Handle crontab validation. Currently when it fails Croncpp, it CRASHES the esp32.
+// √DONE: Handle crontab validation. Currently when it fails Croncpp, it CRASHES the esp32.
 //
 // TODO: Figure out a way to stop polling empty prefs fields, which spits out constant log lines.
 //       This is only an issue when this component is first flashed and no settings have been saved yet.
@@ -13,6 +13,8 @@
 //       BUT, how would we know that nothing was returned from the Preferences get() method? We
 //       would have to make the Preferences 'default' value null, or something, and then check for that.
 //       SEE dynamic_cron_esphome.h for more info and potential solution on this TODO.
+//
+// TODO: Push crontab failure messages to the cronnext-string field in the browser.
 //
 //
 // Maybe see here for polymorphic members vars:
@@ -232,23 +234,41 @@ public:
   // Sets cronnext time_t from crontab field.
   // TODO: Allow a user-entered value to be passed. See below for prototype (works in tests).
   void setCronNext() {
-    if (timeIsValid()) {
-      //LOGD(TAG, "In setCronNext(), timeIsValid() was true");
+    if (timeIsValid()) {  // If system time is not valid, skip all of this.
+      LOGD(TAG, "setCronNext() '%s', timeIsValid(): TRUE", schedule_name.c_str());
       // TODO to handle custom input:
       // if input is valid-time, ! bypass, > now, < cronNextCalc(), then cronnext=input;
       if (crontab == (std::string)"" || bypass) {
         cronnext = 0;
+
+        // LOGD(TAG, "setCronNext() '%s' to [0], while crontab: %s, bypass: %i",
+        //           schedule_name.c_str(),
+        //           crontab.c_str(),
+        //           bypass
+        // );
       }
       else {
-        LOGD(TAG, "Setting cronnext for '%s' %s [%i, %s]",
-          schedule_name.c_str(),
-          schedule_id.c_str(),
-          cronnext,
-          timeToString(cronnext).c_str()
-        );
-        
         cronnext = cronNextCalc();
+        
+        // LOGD(TAG, "setCronNext() '%s' to [%i, %s]",
+        //   schedule_name.c_str(),
+        //   //schedule_id.c_str(),
+        //   cronnext,
+        //   timeToString(cronnext).c_str()
+        // );
       }
+      
+      LOGD(TAG, "setCronNext() '%s' to [%i, %s], while crontab: %s, bypass: %i",
+                schedule_name.c_str(),
+                cronnext,
+                timeToString(cronnext).c_str(),
+                crontab.c_str(),
+                bypass
+      );
+    }
+    
+    else {
+      LOGD(TAG, "setCronNext() '%s', timeIsValid(): FALSE");
     }
   }
 
@@ -497,6 +517,8 @@ protected:
 
 
   // Is current (or given) time valid (synced & legit)?
+  // Even if it's a valid system time, it must be within a reasonable range,
+  // so it can't be 0 (1969, 1970, something like that, depending on locale).
   // We're not actually checking with ESPHome, just with the core c++ time.
   bool timeIsValid(std::time_t now = std::time(NULL)) {
     //LOGD(TAG, "About to calculate within timeIsValid()", "");
@@ -512,7 +534,7 @@ protected:
     //LOGD(TAG, "now_tm.tm_year: %i", now_tm.tm_year);
     
     // Valid if year is >= 1969 (1970 is the start of 'epoch' time).
-    bool rslt = ((now_tm.tm_year + 1900) > 1969);
+    bool rslt = ((now_tm.tm_year + 1900) > 2019);
     
     if (! rslt) {
       LOGE(TAG, "timeIsValid() failed with '%s'", timeToString(now).c_str());
@@ -545,9 +567,16 @@ protected:
 
     for (auto& item: crontabs)
     {
-      auto cron_obj = cron::make_cron(item);
-      std::time_t next = cron::cron_next(cron_obj, _ref_time);
-      start_times.push_back(next);
+      try {
+        auto cron_obj = cron::make_cron(item);
+        std::time_t next = cron::cron_next(cron_obj, _ref_time);
+        start_times.push_back(next);
+      }
+      catch (cron::bad_cronexpr const &ex) {
+        LOGE(TAG, "Not a valid cron expression '%s' %s", item.c_str(), ex.what());
+        //start_times.push_back(std::time_t(0));
+        return {std::time_t(0)};
+      }
     }
 
     // Sorts (in-place) vector of start_times values from soonest to furthest.

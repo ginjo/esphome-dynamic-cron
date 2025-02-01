@@ -17,7 +17,13 @@
 //       But not the user-facing default though. Use an internal default that indicates that the prefs
 //       field is empty. Whenever this default value is returned from the getter, return
 //       the user-facing default back to the program.
-//       
+//
+// FIXBUG: If ignore-missed is set, then cronext string won't be sent to the browser.
+//       It still won't show up, even if ignore-missed is disabled, while a legit crontab
+//       exists.
+//       Update: There appears to be a data related problem with handling cronnext, since
+//       'Lawn' schedule is working fine, but 'Drip' schedule only shows '---' for cronnext.
+//       Update: I improved the logging in setCronNext. Try testing it to see if it shows the problem.
 
 
 #pragma once
