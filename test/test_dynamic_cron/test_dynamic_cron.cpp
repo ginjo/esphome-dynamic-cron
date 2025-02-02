@@ -23,7 +23,6 @@
 // FIX: ArduinoMock is throwing error when testing in native mode.
 // https://github-wiki-see.page/m/Task-Tracker-Systems/Task-Tracker-Device/wiki/tipps-for-using-FakeIt
 
-
 #ifndef IS_NATIVE
 #error "Must define IS_NATIVE in platformio.ini, either 1 or 0"
 #endif
@@ -32,7 +31,7 @@
 #include <thread>
 #include <unity.h>
 
-#include <croncpp.h>
+//#include <croncpp.h>
 
 #if IS_NATIVE == 1
   #include <ArduinoFake.h>
@@ -40,7 +39,9 @@
 #else
   #include <esphome/core/log.h>
   #include <esphome/core/application.h>
-  #include <../esphome/components/dynamic_cron/dynamic_cron_esphome.h>
+  #include "../esphome/components/dynamic_cron/dynamic_cron_esphome.h"
+  // OR
+  //#include "../test_esp/test_dynamic_cron_esphome.cpp"
 #endif
 
 // We already load 'time.h' and 'ctime' in dynamic_cron.h
@@ -257,6 +258,11 @@ int runUnityTests(void) {
   RUN_TEST(test_schedule_calculates_cronnext);
   RUN_TEST(test_schedule_cronNextExpired);
   RUN_TEST(test_schedule_cronLoop);
+  
+  // #if IS_NATIVE != 1
+  //   RUN_TEST(test_prefs);
+  // #endif
+  
   return UNITY_END();
 }
 
@@ -290,7 +296,7 @@ void setup() {
   
   // Wait ~2 seconds before the Unity test runner
   // establishes connection with a board Serial interface
-  delay(2000);
+  ::delay(2000);
 
   runUnityTests();
 }

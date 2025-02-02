@@ -1,12 +1,4 @@
-// TODO: Fix the Preferences errors when the requested preference item
-//       Has not been stored yet (on new or repurposed esp32 boards).
-//       There is not actually any error happening, as our code handles this
-//       just fine. But the Preferences library insists on spitting out log lines
-//       making us think there is an actual error happening. This won't look good
-//       to users who flash a new esp32 board with dynamic_cron, and suddenly see
-//       a bunch or "errors".
-//       SEE dyncamic_cron.h file for more info on this TODO.
-//
+
 // NOTE: If ignore_missed is enabled, we don't save cronnext to prefs,
 //       even if legit time is in cronnext field. This is not a problem, when there is
 //       already data in the cronnext prefs field. It's only at first boot, when this issue arises.
@@ -17,20 +9,25 @@
 //       But not the user-facing default though. Use an internal default that indicates that the prefs
 //       field is empty. Whenever this default value is returned from the getter, return
 //       the user-facing default back to the program.
+//       
+//       Update: The prefs object has a method to test for existence of a key: prefs.isKey("key-name").
+//       See here: https://docs.espressif.com/projects/arduino-esp32/en/latest/tutorials/preferences.html
 //
-// FIXBUG: If ignore-missed is set, then cronext string won't be sent to the browser.
-//       It still won't show up, even if ignore-missed is disabled, while a legit crontab
-//       exists.
-//       Update: There appears to be a data related problem with handling cronnext, since
-//       'Lawn' schedule is working fine, but 'Drip' schedule only shows '---' for cronnext.
-//       Update: I improved the logging in setCronNext. Try testing it to see if it shows the problem.
+// TODO: Consider setting cronnext to 0, whenever ignore_missed is set to true
+//
+// TODO: Consider saving the prefs object within the Schedule, instead of loading it up every run though the loop.
+//       Then compare Schedule fields against that prefs object, instead of against a new prefs object every time
+//       through the loop. Then whenever you save anything to prefs NVS, get a new prefs object to store in the Schedule.
+//
+// TODO: Consider an esphome text field for the user to enter a time-formatting expression,
+//       for the display of the cronnext time in the browser.
 
 
 #pragma once
 
 #include "Arduino.h"
-//#include "esphome.h"
-#include "esphome/core/component.h"
+// #include "esphome/core/component.h"
+// #include "esphome/core/application.h"
 #include <croncpp.h>
 #include <iostream>
 #include <iomanip>
@@ -43,6 +40,8 @@
 #include <Preferences.h>
 #include <time.h>
 
+#include "esphome/core/component.h"
+#include "esphome/core/application.h"
 #include "esphome/components/switch/switch.h"
 #include "esphome/components/text_sensor/text_sensor.h"
 #include "esphome/components/text/text.h"
@@ -53,7 +52,6 @@
 namespace esphome {
 namespace dynamic_cron {
 
-//static const char *TAG = "dynamic_cron";
 
 // Forward declarations that just barely work, given single-file code structure.
 // To push the sub-component building entirely into c++, we would need to separate
@@ -82,9 +80,9 @@ public:
   // Esphome Component overrides
   void setup() override {
     if (timeIsValid() && !setup_complete) {
-      initializePrefs();
+      //initializePrefs();
       loadPrefs();
-      ESP_LOGD(TAG, "Setup completed for %s, with id_hash %s", schedule_name.c_str(), id_hash.c_str());
+      LOGD(LOGTAG, "Setup completed for %s, with id_hash %s", schedule_name.c_str(), id_hash.c_str());
       if (! timeIsValid(cronnext)) {
         setCronNext();
       }
@@ -100,7 +98,7 @@ public:
     if (seconds > loop_interval) {
     
       if (setup_complete) {
-        //ESP_LOGD(TAG, "Looping: %i", now);
+        //LOGD(LOGTAG, "Looping: %i", now);
         cronLoop();
       }
       else {
@@ -112,7 +110,8 @@ public:
   }
   
   void dump_config() override {
-    ESP_LOGCONFIG(TAG, "Dynamic Cron Schedule");
+    //ESP_LOGCONFIG(LOGTAG, "Dynamic Cron Schedule");
+    LOGD(LOGTAG, "Dynamic Cron Schedule %s", schedule_name.c_str());
   }
   
   
@@ -129,7 +128,7 @@ public:
     ScheduleCore(_name, _id, _target_action_fptr),
     clear_prefs(false)
   {
-    ESP_LOGD(TAG, "Initializing Schedule object '%s' %s", _name.c_str(), _id.c_str());
+    LOGD(LOGTAG, "Initializing Schedule object '%s' %s", _name.c_str(), _id.c_str());
   } // end Schedule(...).
 
 
@@ -154,146 +153,193 @@ public:
   }
   
   
-  bool initializePrefs(bool force = false) {  // We're not using 'force' yet
-    const char *idhash = id_hash.c_str();
-    LOGD(TAG, "Opening prefs '%s' (%s) for initialization", schedule_name.c_str(), idhash);
+protected:
+  
+  // If true, clears prefs at first boot after flash.
+  bool clear_prefs;
+  
+  
+  // The SchedulePrefs class instance should:
+  //   * Initialize prefs for this schedule.
+  //   * Retrieve data for all keys.
+  // Then use this object to:
+  //   * Set schedule fields from prefs.
+  //   * compare schedule fields with existing prefs, looking for changes.
+  // When an instance of SchedulePrefs is created, it should be passed the
+  // ScheduleCore instance, which should then be stored in the SchedulePrefs instance.
+  struct SchedulePrefs {
+  public:
+    Preferences   api;
+    Schedule*     schedule;
     
-    prefs.begin(idhash, false); // open read-write
-    int _initialized = prefs.getInt("initialized", 0);
-    // Log output for debugging:
-    // LOGD(TAG, "Preferences '%s' (%s) is comparing TIMESTAMP '%i' with prefs.initialized '%i'",
-    //           schedule_name.c_str(),
-    //           idhash,
-    //           TIMESTAMP,
-    //           _initialized
-    // );
+    int           initialized;
+    std::string   crontab;
+    bool          ignore_missed;
+    bool          bypass;
+    double        cronnext;
     
-    // If the baked-in TIMESTAMP differs from the one saved in this schedule's prefs, then clear prefs.
-    // This will happen on first boot after a flash, if clear_prefs==true, unless TIMESTAMP == 0.
-    // TIMESTAMP is baked into firmware by __init__.py.
-    //
-    // if (force == false && (_initialized == TIMESTAMP || TIMESTAMP == 0)) {
-    //   rslt = false;
-    // }
-    // else if (clear_prefs == true || force == true) {
-    //   rslt = prefs.clear() && prefs.putInt("initialized", TIMESTAMP);
-    //   if (rslt) {
-    //     LOGD(TAG, "Initialized prefs '%s' (%s) with stamp '%i'", schedule_name.c_str(), idhash, TIMESTAMP);
-    //   }
-    // }
-    // else {
-    //   rslt = false;
-    // }
-    //
-    // Refactored if-then logic to reduce verbosity. Should be same logic now but less convoluted.
-    // See here for online logic calculator: https://user.eng.umd.edu/~yavuz/logiccalc.html
-    // Note that logically: !(x | y) == (!x & !y)
-    //
-    bool rslt = false;
-    
-    if (force == true || clear_prefs == true && TIMESTAMP != 0 && _initialized != TIMESTAMP) {
-      rslt = prefs.clear() && prefs.putInt("initialized", TIMESTAMP);
-      if (rslt) {
-        LOGD(TAG, "Initialized prefs '%s' (%s) with stamp '%i'", schedule_name.c_str(), idhash, TIMESTAMP);
-      }
+    SchedulePrefs(Schedule* _schedule) :
+      schedule(_schedule)
+    {
+      //const char *idhash = schedule->id_hash.c_str();
+      initialize();
+      load();
     }
     
-    prefs.end();
-    return rslt;
-  }
-  
-  
-protected:
+    // Does this need to return a bool, or can it be void?
+    bool initialize(bool force = false) {  // We're not using 'force' yet
+      // LOGD(LOGTAG, "Opening prefs '%s' %s for initialization",
+      //   schedule->schedule_name.c_str(),
+      //   schedule->id_hash.c_str()
+      // );
 
-  // Access to the Preferences handler.
-  Preferences prefs;
-  
-  bool clear_prefs; // If true, clears prefs at first boot after flash.
+      api.begin(schedule->id_hash.c_str(), false); // open read-write
+      
+      
+      // Initialize Namespace
+      
+      if (! api.isKey("initialized")) {
+        LOGD(LOGTAG, "Initializing prefs '%s' %s",
+          schedule->schedule_name.c_str(),
+          schedule->id_hash.c_str()
+        );
+        
+        size_t number_free_entries = api.freeEntries();
+        LOGD(LOGTAG, "There are %u free entries available in the namespace table '%s' %s",
+                  number_free_entries,
+                  schedule->schedule_name.c_str(),
+                  schedule->id_hash.c_str()
+        );
+        
+        api.putInt("initialized", 0);
+      }
+      initialized = api.getInt("initialized", 0);
+
+      bool rslt = false;
+      
+      // Set namespace timestamp, used in clear_prefs and api.clear().
+      //
+      // Note that logically: !(x | y) == (!x & !y)
+      //
+      if (force == true || schedule->clear_prefs == true && TIMESTAMP != 0 && initialized != TIMESTAMP) {
+        rslt = api.clear() && api.putInt("initialized", TIMESTAMP);
+        if (rslt) {
+          LOGD(LOGTAG, "Initialized prefs '%s' %s with stamp '%i'",
+            schedule->schedule_name.c_str(),
+            schedule->id_hash.c_str(),
+            TIMESTAMP
+          );
+        }
+      }
+      
+      // Initialize fields
+      
+      if (! api.isKey("crontab")) {
+        api.putString("crontab", String(schedule->crontab_default));
+      }
+      
+      if (! api.isKey("ignore_missed")) {
+        api.putBool("ignore_missed", schedule->ignore_missed_default);
+      }
+      
+      if (! api.isKey("bypass")) {
+        api.putBool("bypass", schedule->bypass_default);
+      }
+      
+      if (! api.isKey("cronnext")) {
+        api.putDouble("cronnext", 0);
+      }
+
+      api.end();
+      return rslt;
+    }
+    
+    
+    void load() {
+      api.begin(schedule->id_hash.c_str(), true); // open read-only
+      
+      //LOGD(LOGTAG, "Loading crontab from prefs '%s'", schedule->schedule_name.c_str());
+      crontab = api.getString("crontab", schedule->crontab_default).c_str();
+
+      //LOGD(LOGTAG, "Loading ignore_missed from prefs '%s'", schedule->schedule_name.c_str());
+      ignore_missed = api.getBool("ignore_missed", schedule->ignore_missed_default);
+
+      //LOGD(LOGTAG, "Loading bypass from prefs '%s'", schedule->schedule_name.c_str());
+      bypass = api.getBool("bypass", schedule->bypass_default);
+
+      //LOGD(LOGTAG, "Loading cronnext from prefs '%s'", schedule->schedule_name.c_str());
+      cronnext = (std::time_t) api.getDouble("cronnext", 0);
+
+      api.end();
+    }
+  }; // SchedulePrefs
   
   
   // Loads persistent data from esp32 nvs.
-  void loadPrefs() {
-    const char *idhash = id_hash.c_str();
+  SchedulePrefs loadPrefs() {
     
-    LOGD(TAG, "Opening prefs '%s' (%s) for reading", schedule_name.c_str(), idhash);
-    prefs.begin(idhash, true); // open read-only
+    SchedulePrefs prefs = SchedulePrefs(this);
     
-    size_t number_free_entries = prefs.freeEntries();
-    LOGD(TAG, "There are %u free entries available in the namespace table '%s'", number_free_entries, idhash);
+    crontab = prefs.crontab;
+    ignore_missed = prefs.ignore_missed;
+    bypass = prefs.bypass;
 
-    //LOGD(TAG, "Loading crontab from prefs '%s', with potential default '%s'", schedule_name.c_str(), crontab_default.c_str());
-    LOGD(TAG, "Loading crontab from prefs '%s'", schedule_name.c_str());
-    crontab = prefs.getString("crontab", crontab_default).c_str();
-
-    LOGD(TAG, "Loading ignore_missed from prefs '%s'", schedule_name.c_str());
-    ignore_missed = prefs.getBool("ignore_missed", ignore_missed_default);
-
-    LOGD(TAG, "Loading bypass from prefs '%s'", schedule_name.c_str());
-    bypass = prefs.getBool("bypass", bypass_default);
-
-    // This has to load after all the others, since we may need to call setCronNext(),
-    // which depends on the others being loaded.
-    if (!ignore_missed) {
-      LOGD(TAG, "Loading cronnext from prefs '%s'", schedule_name.c_str());
-      cronnext = (std::time_t) prefs.getDouble("cronnext", 0);
+    if (! ignore_missed) {
+      cronnext = prefs.cronnext;
     } else {
-      // timeNow() might not be valid yet, but we'll try here anyway.
-      // Otherwise, we have a hook in the cron loop that will pick this up.
-      //setCronNext();
       cronnext = 0;
     }
 
-    prefs.end(); // close
-
-    LOGD(TAG, "Schedule '%s' loaded crontab: %s", schedule_name.c_str(), crontab.c_str());
-    LOGD(TAG, "Schedule '%s' loaded ignore_missed: %i", schedule_name.c_str(), ignore_missed);
+    LOGD(LOGTAG, "Schedule '%s' loaded crontab: %s", schedule_name.c_str(), crontab.c_str());
+    LOGD(LOGTAG, "Schedule '%s' loaded ignore_missed: %i", schedule_name.c_str(), ignore_missed);
     if (!ignore_missed) {
-      LOGD(TAG, "Schedule '%s' loaded cronnext: %d (%s)", schedule_name.c_str(), cronnext, timeToString(cronnext).c_str());
+      LOGD(LOGTAG, "Schedule '%s' loaded cronnext: %d (%s)", schedule_name.c_str(), cronnext, timeToString(cronnext).c_str());
     }
-    LOGD(TAG, "Schedule '%s' loaded bypass: %i", schedule_name.c_str(), bypass);
+    LOGD(LOGTAG, "Schedule '%s' loaded bypass: %i", schedule_name.c_str(), bypass);
+    
+    return prefs;
     
   } // loadPrefs()
   
   
-  // Saves persistent data to esp32 nvs.
+  // Saves persistent data to esp32 NVS.
   void savePrefs() override {
-    const char *idhash = id_hash.c_str();
-
-    //LOGD(TAG, "Opening prefs '%s' (%s) to check for changed values", schedule_name.c_str(), idhash);
-    prefs.begin(idhash, true); // open read-only
-    bool crontab_changed = (crontab != std::string(prefs.getString("crontab", crontab_default).c_str()));
-    bool ignore_missed_changed = (ignore_missed != prefs.getBool("ignore_missed", ignore_missed_default));
-    bool cronnext_changed = (cronnext != (std::time_t) prefs.getDouble("cronnext", 0) && !ignore_missed);
-    bool bypass_changed = (bypass != prefs.getBool("bypass", bypass_default));
-    prefs.end(); // close
+    SchedulePrefs prefs = SchedulePrefs(this);
+    
+    bool crontab_changed = (crontab != prefs.crontab);
+    bool ignore_missed_changed = (ignore_missed != prefs.ignore_missed);
+    bool cronnext_changed = (cronnext != prefs.cronnext && !ignore_missed);
+    bool bypass_changed = (bypass != prefs.bypass);
 
     // If any changes, then open prefs for writing.
     if (crontab_changed || ignore_missed_changed || cronnext_changed || bypass_changed) {
+      
+      Preferences api;
 
-      LOGD(TAG, "Opening prefs '%s' (%s) for writing", schedule_name.c_str(), idhash);
-      prefs.begin(idhash, false); // open as read/write
+      LOGD(LOGTAG, "Opening prefs '%s' (%s) for writing", schedule_name.c_str(), id_hash.c_str());
+      api.begin(id_hash.c_str(), false); // open as read/write
 
       if (crontab_changed) {
-        LOGD(TAG, "Saving crontab to prefs '%s' (%s)", schedule_name.c_str(), crontab.c_str());
-        prefs.putString("crontab", String(crontab.c_str()));
+        LOGD(LOGTAG, "Saving crontab to prefs '%s' (%s)", schedule_name.c_str(), crontab.c_str());
+        api.putString("crontab", String(crontab.c_str()));
       }
 
       if (ignore_missed_changed) {
-        LOGD(TAG, "Saving ignore_missed to prefs '%s' (%d)", schedule_name.c_str(), ignore_missed);
-        prefs.putBool("ignore_missed", ignore_missed);
+        LOGD(LOGTAG, "Saving ignore_missed to prefs '%s' (%d)", schedule_name.c_str(), ignore_missed);
+        api.putBool("ignore_missed", ignore_missed);
       }
 
       if (cronnext_changed) {
-        LOGD(TAG, "Saving cronnext to prefs '%s' (%i)", schedule_name.c_str(), cronnext);
-        prefs.putDouble("cronnext", cronnext);
+        LOGD(LOGTAG, "Saving cronnext to prefs '%s' (%i)", schedule_name.c_str(), cronnext);
+        api.putDouble("cronnext", cronnext);
       }
 
       if (bypass_changed) {
-        LOGD(TAG, "Saving bypass to prefs '%s' (%d)", schedule_name.c_str(), bypass);
-        prefs.putBool("bypass", bypass);
+        LOGD(LOGTAG, "Saving bypass to prefs '%s' (%d)", schedule_name.c_str(), bypass);
+        api.putBool("bypass", bypass);
       }
 
-      prefs.end();
+      api.end();
 
     } // if any changes
   } // savePrefs()
@@ -301,7 +347,7 @@ protected:
 }; // Schedule class
 
 
-class BypassSwitch : public switch_::Switch, public Component  {
+class BypassSwitch : public switch_::Switch, public Component, public MyLogger {
 public:
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
   Schedule *schedule;
@@ -323,7 +369,7 @@ public:
   }
   
   void setup() {
-    //ESP_LOGD(TAG, "get_object_id(): %s", get_object_id().c_str());
+    //ESP_LOGD(LOGTAG, "get_object_id(): %s", get_object_id().c_str());
   }
   
   void loop() override {
@@ -337,14 +383,14 @@ public:
   }
   
   void write_state(bool _state) {
-    ESP_LOGD(TAG, "BypassSwitch::write_state(): %i", _state);
+    LOGD(LOGTAG, "BypassSwitch::write_state(): %i", _state);
     schedule->setBypass(_state);
   }
   
 }; // BypassSwitch class
 
 
-class IgnoreMissedSwitch : public switch_::Switch, public Component {
+class IgnoreMissedSwitch : public switch_::Switch, public Component, public MyLogger {
 public:
   
   Schedule *schedule;
@@ -366,7 +412,7 @@ public:
   }
   
   void setup() {
-    //ESP_LOGD(TAG, "get_object_id(): %s", get_object_id().c_str());
+    //ESP_LOGD(LOGTAG, "get_object_id(): %s", get_object_id().c_str());
   }
   
   void loop() override {
@@ -380,14 +426,14 @@ public:
   }
   
   void write_state(bool _state) {
-    ESP_LOGD(TAG, "IgnoreMissedSwitch::write_state(): %i", _state);
+    LOGD(LOGTAG, "IgnoreMissedSwitch::write_state(): %i", _state);
     schedule->setIgnoreMissed(_state);
   }
   
 }; // IgnoreMissedSwitch class
 
 
-class CronNextSensor : public text_sensor::TextSensor, public Component {
+class CronNextSensor : public text_sensor::TextSensor, public Component, public MyLogger {
 public:
   
   Schedule *schedule;
@@ -408,7 +454,7 @@ public:
   }
   
   void setup() {
-    //ESP_LOGD(TAG, "get_object_id(): %s", get_object_id().c_str());
+    //ESP_LOGD(LOGTAG, "get_object_id(): %s", get_object_id().c_str());
   }
   
   void loop() override {
@@ -425,7 +471,7 @@ public:
 }; // CronNextSensor class
 
 
-class CrontabTextField : public text::Text, public Component {
+class CrontabTextField : public text::Text, public Component, public MyLogger {
 public:
   
   Schedule *schedule;
@@ -449,7 +495,7 @@ public:
   }
   
   void setup() {
-    //ESP_LOGD(TAG, "get_object_id(): %s", get_object_id().c_str());
+    //ESP_LOGD(LOGTAG, "get_object_id(): %s", get_object_id().c_str());
   }
   
   void loop() override {
@@ -463,7 +509,7 @@ public:
   }
   
   void control(const std::string &_state) {
-    //ESP_LOGD(TAG, "CrontabTextField::control(): %i", &_state);
+    //ESP_LOGD(LOGTAG, "CrontabTextField::control(): %i", &_state);
     schedule->setCrontab(_state);
   }
   

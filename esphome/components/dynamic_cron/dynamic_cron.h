@@ -37,8 +37,31 @@
 namespace esphome {
 namespace dynamic_cron {
 
-static const char *TAG = "dynamic_cron";
+static const char *LOGTAG = "dynamic_cron";
 static int TIMESTAMP;
+
+
+class MyLogger {
+public:
+  // We created our own LOGx functions, since we need to access them independently
+  // from esphome (especially during test runs).
+  template<typename... Args>
+  static void LOGD(const char *tag, const char *fmt, Args... args) {
+      printf("[D][%s]: ", tag);
+      printf(fmt, args...);
+      printf("\n");
+      //(std::cout << ... << args) << std::endl;
+  }
+  //
+  template<typename... Args>
+  static void LOGE(const char *tag, const char *fmt, Args... args) {
+      printf("[E][%s]: ", tag);
+      printf(fmt, args...);
+      printf("\n");
+      //(std::cout << ... << args) << std::endl;
+  }
+};
+
 
 // Forward declaration.
 class Schedule;
@@ -46,7 +69,7 @@ class Schedule;
 
 
 // Core definition of the schedule object.
-class ScheduleCore {
+class ScheduleCore : public MyLogger {
   
   // We don't appear to need this... yet.
   // friend class ScheduleMock;
@@ -78,27 +101,24 @@ public:
     
   double loop_interval; // seconds
   
-  // We created our own LOGx functions, since we need to access them independently
-  // from esphome (especially during test runs).
-  //
-  // Placeholder for ESP_LOGD(). See dynamic_cron.h
-  template<typename... Args>
-  static void LOGD(const char *tag, const char *fmt, Args... args) {
-      printf("[D][%s]: ", tag);
-      printf(fmt, args...);
-      printf("\n");
-      //(std::cout << ... << args) << std::endl;
-  }
-  //
-  // Placeholder for ESP_LOGE(). See dynamic_cron.h
-  template<typename... Args>
-  static void LOGE(const char *tag, const char *fmt, Args... args) {
-      printf("[E][%s]: ", tag);
-      printf(fmt, args...);
-      printf("\n");
-      //(std::cout << ... << args) << std::endl;
-  }
-  
+  // // We created our own LOGx functions, since we need to access them independently
+  // // from esphome (especially during test runs).
+  // template<typename... Args>
+  // static void LOGD(const char *tag, const char *fmt, Args... args) {
+  //     printf("[D][%s]: ", tag);
+  //     printf(fmt, args...);
+  //     printf("\n");
+  //     //(std::cout << ... << args) << std::endl;
+  // }
+  // //
+  // template<typename... Args>
+  // static void LOGE(const char *tag, const char *fmt, Args... args) {
+  //     printf("[E][%s]: ", tag);
+  //     printf(fmt, args...);
+  //     printf("\n");
+  //     //(std::cout << ... << args) << std::endl;
+  // }
+  // 
   
   // Custom constructor method to create ScheduleCore object.
   // NOTE: The function-pointer argument must have NO captures, if it's receiving a lambda.
@@ -124,7 +144,7 @@ public:
     id_hash(""),
     setup_complete(false)
   {
-    LOGD(TAG, "Initializing ScheduleCore object '%s' %s", _name.c_str(), _id.c_str());
+    LOGD(LOGTAG, "Initializing ScheduleCore object '%s' %s", _name.c_str(), _id.c_str());
     id_hash = GetHash(schedule_id);
     previous = std::time(NULL);
     AddToSchedules(this);
@@ -196,7 +216,7 @@ public:
       this_time_t = cronNextCalc(_crontab, this_time_t);
       this_time_s = timeToString(this_time_t);
       out.insert({this_time_t, this_time_s});
-      // LOGD(TAG, "i: %i, this_time_t: %i, this_time_s: %s", i, this_time_t, this_time_s.c_str());
+      // LOGD(LOGTAG, "i: %i, this_time_t: %i, this_time_s: %s", i, this_time_t, this_time_s.c_str());
     }
 
     return out;
@@ -218,8 +238,8 @@ public:
       out = (std::difftime(cronnext, now) < 0);
     }
     
-    //LOGD(TAG, "cronNextExpired() cronnext, now: %s, %s", timeToString(cronnext).c_str(), timeToString(now).c_str());
-    //LOGD(TAG, "cronNextExpired() result: %i", out);
+    //LOGD(LOGTAG, "cronNextExpired() cronnext, now: %s, %s", timeToString(cronnext).c_str(), timeToString(now).c_str());
+    //LOGD(LOGTAG, "cronNextExpired() result: %i", out);
     
     return out;
   }
@@ -235,13 +255,13 @@ public:
   // TODO: Allow a user-entered value to be passed. See below for prototype (works in tests).
   void setCronNext() {
     if (timeIsValid()) {  // If system time is not valid, skip all of this.
-      LOGD(TAG, "setCronNext() '%s', timeIsValid(): TRUE", schedule_name.c_str());
+      LOGD(LOGTAG, "setCronNext() '%s', timeIsValid(): TRUE", schedule_name.c_str());
       // TODO to handle custom input:
       // if input is valid-time, ! bypass, > now, < cronNextCalc(), then cronnext=input;
       if (crontab == (std::string)"" || bypass) {
         cronnext = 0;
 
-        // LOGD(TAG, "setCronNext() '%s' to [0], while crontab: %s, bypass: %i",
+        // LOGD(LOGTAG, "setCronNext() '%s' to [0], while crontab: %s, bypass: %i",
         //           schedule_name.c_str(),
         //           crontab.c_str(),
         //           bypass
@@ -250,7 +270,7 @@ public:
       else {
         cronnext = cronNextCalc();
         
-        // LOGD(TAG, "setCronNext() '%s' to [%i, %s]",
+        // LOGD(LOGTAG, "setCronNext() '%s' to [%i, %s]",
         //   schedule_name.c_str(),
         //   //schedule_id.c_str(),
         //   cronnext,
@@ -258,7 +278,7 @@ public:
         // );
       }
       
-      LOGD(TAG, "setCronNext() '%s' to [%i, %s], while crontab: %s, bypass: %i",
+      LOGD(LOGTAG, "setCronNext() '%s' to [%i, %s], while crontab: %s, bypass: %i",
                 schedule_name.c_str(),
                 cronnext,
                 timeToString(cronnext).c_str(),
@@ -268,7 +288,7 @@ public:
     }
     
     else {
-      LOGD(TAG, "setCronNext() '%s', timeIsValid(): FALSE");
+      LOGD(LOGTAG, "setCronNext() '%s', timeIsValid(): FALSE");
     }
   }
 
@@ -291,10 +311,10 @@ public:
       // we need to make sure to clear out the manuall cronnext after it's used,
       // otherwise it'll trigger with every loop.
     ){
-      //LOGD(TAG, "Setting cronnext from input '%s' %i", timeToString(input).c_str(), input);
+      //LOGD(LOGTAG, "Setting cronnext from input '%s' %i", timeToString(input).c_str(), input);
       cronnext = input;
       
-      LOGD(TAG, "Setting cronnext for '%s' %s [%i, %s]",
+      LOGD(LOGTAG, "Setting cronnext for '%s' %s [%i, %s]",
         schedule_name.c_str(),
         schedule_id.c_str(),
         input,
@@ -302,7 +322,7 @@ public:
       );
     }
     else {
-      LOGD(TAG, "setCronNext() skipping invalid input '%s' %s [%i, %s]",
+      LOGD(LOGTAG, "setCronNext() skipping invalid input '%s' %s [%i, %s]",
         schedule_name.c_str(),
         schedule_id.c_str(),
         input,
@@ -324,7 +344,7 @@ public:
 
   // Sets crontab with given string.
   std::string setCrontab(std::string str) {
-    LOGD(TAG, "Setting crontab for '%s' %s [%s]", schedule_name.c_str(), schedule_id.c_str(), str.c_str());
+    LOGD(LOGTAG, "Setting crontab for '%s' %s [%s]", schedule_name.c_str(), schedule_id.c_str(), str.c_str());
     crontab = str;
     setCronNext();
     return crontab;
@@ -400,7 +420,7 @@ public:
       timetm = localtime(&timet);
       char str[24];
       strftime(str, sizeof(str), "%Y-%m-%d %H:%M:%S", timetm);
-      //LOGD(TAG, "From inside timeToString() '%s'", str);
+      //LOGD(LOGTAG, "From inside timeToString() '%s'", str);
       return (std::string)str;
     }
     else {
@@ -417,7 +437,7 @@ public:
   
     // Parse the time string using strptime
     if (strptime(input.c_str(), "%Y-%m-%d %H:%M:%S", &tm_struct) == nullptr) {
-        LOGE(TAG, "Error parsing time string");
+        LOGE(LOGTAG, "Error parsing time string");
         return 0;
     }
   
@@ -425,9 +445,9 @@ public:
     time_t t_time = mktime(&tm_struct);
   
     // Log the time_t value
-    //LOGD(TAG, "stringToTime() parsed time '%s' in seconds since epoch: %i", input.c_str(), t_time);
+    //LOGD(LOGTAG, "stringToTime() parsed time '%s' in seconds since epoch: %i", input.c_str(), t_time);
     // Log the reverse operation.
-    //LOGD(TAG, "stringToTime() reverse operation: %s", timeToString(t_time).c_str());
+    //LOGD(LOGTAG, "stringToTime() reverse operation: %s", timeToString(t_time).c_str());
   
     return t_time;
   }
@@ -445,7 +465,7 @@ protected:
   // Adds a schedule object to a globally accessible vector array 'all_schedules'.
   // Are we still using this?
   static void AddToSchedules(ScheduleCore* schedule) {
-      LOGD(TAG, "Adding Schedule '%s' %s to Schedules vector", schedule->schedule_name.c_str(), schedule->schedule_id.c_str());
+      LOGD(LOGTAG, "Adding Schedule '%s' %s to Schedules vector", schedule->schedule_name.c_str(), schedule->schedule_id.c_str());
       Schedules().push_back(schedule);
   }
   
@@ -453,7 +473,7 @@ protected:
   // Calls cronLoop() method of all Schedules().
   // Deprecated. Now we use esphome loop() method that's part of every Component instance.
   static void CronLooper() {
-    //LOGD(TAG, "CronLooper() called");
+    //LOGD(LOGTAG, "CronLooper() called");
     for (auto s : Schedules()) {
       s->cronLoop();
     }
@@ -464,7 +484,7 @@ protected:
   // Calls savePrefs().
   void cronLoop() {
     if (timeIsValid() && cronNextExpired()) {
-      LOGD(TAG, "Calling lambda for schedule '%s'", schedule_name.c_str());
+      LOGD(LOGTAG, "Calling lambda for schedule '%s'", schedule_name.c_str());
       bool result = target_action_fptr();
       if (result) {
         setCronNext();
@@ -502,7 +522,7 @@ protected:
     // Logs next-run for each crontab.
     // for (auto& item: nexts)
     // {
-    //   LOGD(TAG, "Sorted cron-next: %s", timeToString(item).c_str());
+    //   LOGD(LOGTAG, "Sorted cron-next: %s", timeToString(item).c_str());
     // }
 
     // Returns first (soonest) time_t from vector-of-nexts.
@@ -521,7 +541,7 @@ protected:
   // so it can't be 0 (1969, 1970, something like that, depending on locale).
   // We're not actually checking with ESPHome, just with the core c++ time.
   bool timeIsValid(std::time_t now = std::time(NULL)) {
-    //LOGD(TAG, "About to calculate within timeIsValid()", "");
+    //LOGD(LOGTAG, "About to calculate within timeIsValid()", "");
     
     // We previously tested against esptime.
     //return id(esptime).now().is_valid();
@@ -531,13 +551,13 @@ protected:
     
     struct tm now_tm;
     now_tm = *localtime(&now);
-    //LOGD(TAG, "now_tm.tm_year: %i", now_tm.tm_year);
+    //LOGD(LOGTAG, "now_tm.tm_year: %i", now_tm.tm_year);
     
     // Valid if year is >= 1969 (1970 is the start of 'epoch' time).
     bool rslt = ((now_tm.tm_year + 1900) > 2019);
     
     if (! rslt) {
-      LOGE(TAG, "timeIsValid() failed with '%s'", timeToString(now).c_str());
+      LOGE(LOGTAG, "timeIsValid() failed with '%s'", timeToString(now).c_str());
     };
     
     return rslt;
@@ -573,7 +593,7 @@ protected:
         start_times.push_back(next);
       }
       catch (cron::bad_cronexpr const &ex) {
-        LOGE(TAG, "Not a valid cron expression '%s' %s", item.c_str(), ex.what());
+        LOGE(LOGTAG, "Not a valid cron expression '%s' %s", item.c_str(), ex.what());
         //start_times.push_back(std::time_t(0));
         return {std::time_t(0)};
       }
