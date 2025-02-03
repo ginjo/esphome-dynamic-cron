@@ -1,9 +1,10 @@
 *__pycache__/
 .pio/
-.platformio
-.esphome
+.platformio/
+.esphome/
+.env
 /core
-/src
+/src/
 
 # These should be at end of list.
 # It gives us a way to mark a directory as 'keep'.

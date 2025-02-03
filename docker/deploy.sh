@@ -4,5 +4,6 @@
 #
 # I would recommend that that you run the esphome dashboard app from its
 # own dedicated esphome directory, not from the DynamicCron directory.
+mkdir -p .platformio
 docker stack deploy -c docker/compose.yml esp
 
