@@ -7,7 +7,7 @@ services:
     image: esphome/esphome:2024.7.3
     volumes:
       # This is the directory where platformio will store needed source code and library files.
-      - "$PWD/.platformio/:/root/.platformio:rw"
+      - "${DOT_PLATFORMIO:-#PWD/.platformio}:/root/.platformio:rw"
       # Should map the location of the external component project directory on the host.
       - "$PWD:/DynamicCron:rw"
       # Enables timezone resolution.
