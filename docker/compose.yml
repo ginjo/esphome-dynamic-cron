@@ -1,0 +1,23 @@
+---
+version: '3'
+services:
+  esphome:
+    container_name: esphome
+    hostname: esphome
+    image: esphome/esphome:2024.7.3
+    volumes:
+      # This is the directory where platformio will store needed source code and library files.
+      - "$PWD/.platformio/:/root/.platformio:rw"
+      # Should map the location of the external component project directory on the host.
+      - "$PWD:/DynamicCron:rw"
+      # Enables timezone resolution.
+      - "/etc/localtime:/etc/localtime:ro"
+    environment:
+      TZ: America/Los_Angeles
+    # We're overriding the entrypoint of "/entrypoint.sh",
+    # so we can start up the container as a bash session.
+    entrypoint: [""]
+    # If you don't provide a command when launching the docker container,
+    # this will default to the original behavior of the esphome/esphome image.
+    # It will launch the esphome-dashboard app.
+    command: ["/entrypoint.sh","dashboard","/config"]
