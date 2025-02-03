@@ -37,11 +37,11 @@
   #include <ArduinoFake.h>
   #include <../esphome/components/dynamic_cron/dynamic_cron.h>
 #else
-  #include <esphome/core/log.h>
-  #include <esphome/core/application.h>
-  #include "../esphome/components/dynamic_cron/dynamic_cron_esphome.h"
+  //#include <esphome/core/log.h>
+  //#include <esphome/core/application.h>
+  //#include "../esphome/components/dynamic_cron/dynamic_cron_esphome.h"
   // OR
-  //#include "../test_esp/test_dynamic_cron_esphome.cpp"
+  #include "../test_esp/test_dynamic_cron_esphome.cpp"
 #endif
 
 // We already load 'time.h' and 'ctime' in dynamic_cron.h
@@ -259,9 +259,9 @@ int runUnityTests(void) {
   RUN_TEST(test_schedule_cronNextExpired);
   RUN_TEST(test_schedule_cronLoop);
   
-  // #if IS_NATIVE != 1
-  //   RUN_TEST(test_prefs);
-  // #endif
+  #if IS_NATIVE != 1
+    RUN_TEST(test_prefs);
+  #endif
   
   return UNITY_END();
 }

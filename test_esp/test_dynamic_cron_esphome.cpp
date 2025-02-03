@@ -8,10 +8,10 @@
 #include <esphome/core/application.h>
 #include <esphome/core/component.h>
 
-#include <esphome/core/log.cpp>
-#include <esphome/components/logger/logger.cpp>
-#include <esphome/core/application.cpp>
-#include <esphome/core/component.cpp>
+//#include <esphome/core/log.cpp>
+//#include <esphome/components/logger/logger.cpp>
+//#include <esphome/core/application.cpp>
+//#include <esphome/core/component.cpp>
 
 #include "../esphome/components/dynamic_cron/dynamic_cron_esphome.h"
 
