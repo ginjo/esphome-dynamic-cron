@@ -31,25 +31,20 @@
 #include <thread>
 #include <unity.h>
 
+// We already load 'time.h' and 'ctime' in dynamic_cron.h
+// This is for direct manipulation of system time using timeval struct.
+#include <sys/time.h>
+// See here for faketime library, which could help isolate datetime manipulations:
+//   https://github.com/wolfcw/libfaketime
+
 //#include <croncpp.h>
 
 #if IS_NATIVE == 1
   #include <ArduinoFake.h>
   #include <../esphome/components/dynamic_cron/dynamic_cron.h>
 #else
-  //#include <esphome/core/log.h>
-  //#include <esphome/core/application.h>
-  //#include "../esphome/components/dynamic_cron/dynamic_cron_esphome.h"
-  // OR
-  #include "../test_esp/test_dynamic_cron_esphome.cpp"
+  #include "esphome_tests/esphome_tests.cpp"
 #endif
-
-// We already load 'time.h' and 'ctime' in dynamic_cron.h
-// This is for direct manipulation of system time using timeval struct.
-#include <sys/time.h>
-
-// Finally, see here for faketime library, which could help isolate datetime manipulations:
-//   https://github.com/wolfcw/libfaketime
 
 
 class ScheduleMock : public esphome::dynamic_cron::ScheduleCore {
@@ -96,7 +91,6 @@ void initScheduleMock(ScheduleMock* obj) {
 }
 
 
-
 int getSystemTime() {
   struct timeval tv;
   gettimeofday(&tv, nullptr);
@@ -118,9 +112,6 @@ int getSystemTime() {
   return 0;
 }
 
-// Not using?
-//std::time_t* OriginalTime = nullptr;
-
 // Sets system clock to a specific time, given seconds-since-epoch.
 // Search google for 'c++ settimeofday()' and AI will show you about this.
 //
@@ -137,15 +128,13 @@ void printSystemTime() {
   std::cout << "System time: " << ScheduleMockInst->timeToString(now).c_str() << "\n";
 }
 
+
 void setUp(void) {
   // Performed before ever test is run.
   
   std::cout << "SETUP\n";
-  //OriginalTime = new std::time_t(NULL);
-  //std::cout << "OriginalTime: " << ScheduleMockInst->timeToString(*OriginalTime).c_str() << "\n";
-  //setSystemTime();
   
-  // Wee need to use dynamic (heap?) memory,
+  // We need to use dynamic (heap?) memory,
   // otherwise the object goes out of scope and is deleted,
   // even though the var is declared at the top-level.
   // This way, the object persists until we delete it.
@@ -157,10 +146,8 @@ void tearDown(void) {
   // Performed after every test is run.
   
   std::cout << "TEARDOWN\n";
-  //setSystemTime(*OriginalTime);
   
   delete ScheduleMockInst;
-  //delete OriginalTime;
 }
 
 
@@ -270,9 +257,7 @@ int runUnityTests(void) {
 
 // IMPLEMENTATIONS - you can remove unnecessary implementations if not using them //
 
-/**
-  * For native dev-platform or for some embedded frameworks
-  */
+// For native dev-platform or for some embedded frameworks
 //int main(void) {
 int main( int argc, char **argv ) {
   getSystemTime();
@@ -284,9 +269,7 @@ int main( int argc, char **argv ) {
   return runUnityTests();
 }
 
-/**
-  * For Arduino framework
-  */
+// For Arduino framework
 void setup() {  
   getSystemTime();
   
@@ -296,6 +279,8 @@ void setup() {
   
   // Wait ~2 seconds before the Unity test runner
   // establishes connection with a board Serial interface
+  // We need the preceding '::' here because there is another delay() function
+  // within this same scope, provided by Arduino or Esphome.
   ::delay(2000);
 
   runUnityTests();
