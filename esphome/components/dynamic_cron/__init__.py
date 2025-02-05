@@ -55,7 +55,11 @@ CONFIG_SCHEMA = cv.Schema({
 }).extend(cv.COMPONENT_SCHEMA)
 
 
+# This is a timestamp of when the firmware was built. We use it to make decisions
+# during the Preferences initialization functions during the first-boot after flashing.
 # Since we only need the timestamp once, we do it here, outside of the to_code() method.
+# NOTE: This is not a unix time_t value, it is likely in nanoseconds.
+#
 global_timestamp = cg.RawStatement(f'esphome::dynamic_cron::TIMESTAMP = {round(time())};\n')
 cg.add(global_timestamp)
 

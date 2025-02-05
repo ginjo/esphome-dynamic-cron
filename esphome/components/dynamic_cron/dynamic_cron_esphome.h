@@ -98,7 +98,7 @@ public:
     if (seconds > loop_interval) {
     
       if (setup_complete) {
-        //LOGD(LOGTAG, "Looping: %i", now);
+        //LOGD(LOGTAG, "Looping: %lu", now);
         cronLoop();
       }
       else {
@@ -128,7 +128,7 @@ public:
     ScheduleCore(_name, _id, _target_action_fptr),
     clear_prefs(false)
   {
-    LOGD(LOGTAG, "Initializing Schedule object '%s' %s", _name.c_str(), _id.c_str());
+    LOGD(LOGTAG, "Initializing Schedule '%s' %s", _name.c_str(), _id.c_str());
   } // end Schedule(...).
 
 
@@ -167,16 +167,25 @@ protected:
   //   * compare schedule fields with existing prefs, looking for changes.
   // When an instance of SchedulePrefs is created, it should be passed the
   // ScheduleCore instance, which should then be stored in the SchedulePrefs instance.
+  //
+  // For list of Preferences data types see:
+  //   https://docs.espressif.com/projects/arduino-esp32/en/latest/tutorials/preferences.html
+  //
+  // For list of C format specifiers (for printf, etc.) see:
+  //   https://www.geeksforgeeks.org/format-specifiers-in-c/
+  //
+  // For linux epoch converter see: https://www.epochconverter.com/
+  //
   struct SchedulePrefs {
   public:
     Preferences   api;
     Schedule*     schedule;
     
-    int           initialized;
+    uint64_t      initialized;  // TIMESTAMP of firmware in nanoseconds at compile time (from __init__.py).
     std::string   crontab;
     bool          ignore_missed;
     bool          bypass;
-    double        cronnext;
+    std::time_t   cronnext;
     
     SchedulePrefs(Schedule* _schedule) :
       schedule(_schedule)
@@ -193,38 +202,44 @@ protected:
       //   schedule->id_hash.c_str()
       // );
 
-      api.begin(schedule->id_hash.c_str(), false); // open read-write
+      api.begin(schedule->id_hash.c_str(), false); // open prefs read-write
       
+      if (TIMESTAMP == 0) {
+        LOGE(LOGTAG, "Firmware TIMESTAMP == 0 and could prevent proper management of schedule preferences between firmware flashes");
+      }
       
-      // Initialize Namespace
+      // Initializes namespace timestamp, if not already done.
       
       if (! api.isKey("initialized")) {
-        LOGD(LOGTAG, "Initializing prefs '%s' %s",
+        LOGD(LOGTAG, "Initializing prefs namespace '%s' %s with stamp '%llu'",
           schedule->schedule_name.c_str(),
-          schedule->id_hash.c_str()
+          schedule->id_hash.c_str(),
+          TIMESTAMP
         );
+        
+        // Sets the 'initialized' preference field to TIMESTAMP (nanoseconds, from __init__.py).
+        api.putULong64("initialized", TIMESTAMP);
         
         size_t number_free_entries = api.freeEntries();
         LOGD(LOGTAG, "There are %u free entries available in the namespace table '%s' %s",
-                  number_free_entries,
-                  schedule->schedule_name.c_str(),
-                  schedule->id_hash.c_str()
+          number_free_entries,
+          schedule->schedule_name.c_str(),
+          schedule->id_hash.c_str()
         );
-        
-        api.putInt("initialized", 0);
       }
-      initialized = api.getInt("initialized", 0);
-
-      bool rslt = false;
       
-      // Set namespace timestamp, used in clear_prefs and api.clear().
+      // Retrieves the preference 'initialized' field.
+      initialized = api.getULong64("initialized", 0);
+
+      // Clears preferences namespace, if conditions allow.
       //
       // Note that logically: !(x | y) == (!x & !y)
       //
+      bool rslt = false;
       if (force == true || schedule->clear_prefs == true && TIMESTAMP != 0 && initialized != TIMESTAMP) {
-        rslt = api.clear() && api.putInt("initialized", TIMESTAMP);
+        rslt = api.clear(); // && api.putULong64("initialized", TIMESTAMP);
         if (rslt) {
-          LOGD(LOGTAG, "Initialized prefs '%s' %s with stamp '%i'",
+          LOGD(LOGTAG, "Re-initialized prefs namespace '%s' %s with stamp '%llu'",
             schedule->schedule_name.c_str(),
             schedule->id_hash.c_str(),
             TIMESTAMP
@@ -232,7 +247,19 @@ protected:
         }
       }
       
-      // Initialize fields
+      // Updates 'initialized' if different from TIMESTAMP.
+      if (TIMESTAMP != 0 && initialized != TIMESTAMP) {
+        api.putULong64("initialized", TIMESTAMP);
+        initialized = api.getULong64("initialized", 0);
+        
+        LOGD(LOGTAG, "Updated prefs namespace '%s' %s with stamp '%llu'",
+          schedule->schedule_name.c_str(),
+          schedule->id_hash.c_str(),
+          initialized
+        );
+      }
+            
+      // Initializes data fields
       
       if (! api.isKey("crontab")) {
         api.putString("crontab", String(schedule->crontab_default));
@@ -247,7 +274,7 @@ protected:
       }
       
       if (! api.isKey("cronnext")) {
-        api.putDouble("cronnext", 0);
+        api.putULong64("cronnext", 0);
       }
 
       api.end();
@@ -256,7 +283,7 @@ protected:
     
     
     void load() {
-      api.begin(schedule->id_hash.c_str(), true); // open read-only
+      api.begin(schedule->id_hash.c_str(), true); // open prefs read-only
       
       //LOGD(LOGTAG, "Loading crontab from prefs '%s'", schedule->schedule_name.c_str());
       crontab = api.getString("crontab", schedule->crontab_default).c_str();
@@ -268,7 +295,7 @@ protected:
       bypass = api.getBool("bypass", schedule->bypass_default);
 
       //LOGD(LOGTAG, "Loading cronnext from prefs '%s'", schedule->schedule_name.c_str());
-      cronnext = (std::time_t) api.getDouble("cronnext", 0);
+      cronnext = (std::time_t) api.getULong64("cronnext", 0);
 
       api.end();
     }
@@ -291,11 +318,11 @@ protected:
     }
 
     LOGD(LOGTAG, "Schedule '%s' loaded crontab: %s", schedule_name.c_str(), crontab.c_str());
-    LOGD(LOGTAG, "Schedule '%s' loaded ignore_missed: %i", schedule_name.c_str(), ignore_missed);
+    LOGD(LOGTAG, "Schedule '%s' loaded ignore_missed: %d", schedule_name.c_str(), ignore_missed);
     if (!ignore_missed) {
-      LOGD(LOGTAG, "Schedule '%s' loaded cronnext: %d (%s)", schedule_name.c_str(), cronnext, timeToString(cronnext).c_str());
+      LOGD(LOGTAG, "Schedule '%s' loaded cronnext: %lu (%s)", schedule_name.c_str(), cronnext, timeToString(cronnext).c_str());
     }
-    LOGD(LOGTAG, "Schedule '%s' loaded bypass: %i", schedule_name.c_str(), bypass);
+    LOGD(LOGTAG, "Schedule '%s' loaded bypass: %d", schedule_name.c_str(), bypass);
     
     return prefs;
     
@@ -330,8 +357,8 @@ protected:
       }
 
       if (cronnext_changed) {
-        LOGD(LOGTAG, "Saving cronnext to prefs '%s' (%i)", schedule_name.c_str(), cronnext);
-        api.putDouble("cronnext", cronnext);
+        LOGD(LOGTAG, "Saving cronnext to prefs '%s' (%lu)", schedule_name.c_str(), cronnext);
+        api.putULong64("cronnext", cronnext);
       }
 
       if (bypass_changed) {
@@ -383,7 +410,7 @@ public:
   }
   
   void write_state(bool _state) {
-    LOGD(LOGTAG, "BypassSwitch::write_state(): %i", _state);
+    LOGD(LOGTAG, "BypassSwitch::write_state(): %d", _state);
     schedule->setBypass(_state);
   }
   
@@ -426,7 +453,7 @@ public:
   }
   
   void write_state(bool _state) {
-    LOGD(LOGTAG, "IgnoreMissedSwitch::write_state(): %i", _state);
+    LOGD(LOGTAG, "IgnoreMissedSwitch::write_state(): %d", _state);
     schedule->setIgnoreMissed(_state);
   }
   
@@ -509,7 +536,7 @@ public:
   }
   
   void control(const std::string &_state) {
-    //ESP_LOGD(LOGTAG, "CrontabTextField::control(): %i", &_state);
+    //ESP_LOGD(LOGTAG, "CrontabTextField::control(): %d", &_state);
     schedule->setCrontab(_state);
   }
   

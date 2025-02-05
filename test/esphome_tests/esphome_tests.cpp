@@ -4,20 +4,10 @@
 // and not in the 'native' test environment.
 
 //#include "../test_esp/esphome.h"
-#include <esphome/core/log.h>
-#include <esphome/components/logger/logger.h>
-#include <esphome/core/application.h>
-#include <esphome/core/component.h>
-
-#include <chrono>
-#include <thread>
-#include <unity.h>
-
-// We already load 'time.h' and 'ctime' in dynamic_cron.h
-// This is for direct manipulation of system time using timeval struct.
-#include <sys/time.h>
-// See here for faketime library, which could help isolate datetime manipulations:
-//   https://github.com/wolfcw/libfaketime
+// #include <esphome/core/log.h>
+// #include <esphome/components/logger/logger.h>
+// #include <esphome/core/application.h>
+// #include <esphome/core/component.h>
 
 #include "../esphome/components/dynamic_cron/dynamic_cron_esphome.h"
 
@@ -35,11 +25,19 @@ public:
   
 };
 
+
 // TESTS - covers portionsl of dyncamic_cron that interact directly with esphome functions and classes.
 
-void test_prefs(void) {
-  ScheduleEsphomeMock* schedule = new ScheduleEsphomeMock;
-  // auto prefs = schedule->getPrefs();
-  // TEST_ASSERT_TRUE(prefs.initialized > 0);
-  delete schedule;
+void test_prefs_initialized(void) {
+  ScheduleEsphomeMock schedule;
+  auto prefs = schedule.getPrefs();
+  TEST_ASSERT_TRUE(prefs.initialized > 0);
 }
+
+void test_prefs_updates_timestamp(void) {
+  ScheduleEsphomeMock schedule;
+  esphome::dynamic_cron::TIMESTAMP += 300;
+  auto prefs = schedule.getPrefs();
+  TEST_ASSERT_TRUE(esphome::dynamic_cron::TIMESTAMP == 1600000300);
+}
+

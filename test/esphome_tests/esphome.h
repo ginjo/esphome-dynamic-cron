@@ -1,4 +1,5 @@
 // This file was coppied from an esphome build using the dynamic_cron external component.
+// This is not currently used in the testing scripts.
 
 #pragma once
 

@@ -38,7 +38,10 @@ namespace esphome {
 namespace dynamic_cron {
 
 static const char *LOGTAG = "dynamic_cron";
-static int TIMESTAMP;
+
+// This is the timestamp of the firmware build.
+// This will be set in python and is likely nanoseconds from epoch.
+uint64_t TIMESTAMP;
 
 
 class MyLogger {
@@ -144,7 +147,7 @@ public:
     id_hash(""),
     setup_complete(false)
   {
-    LOGD(LOGTAG, "Initializing ScheduleCore object '%s' %s", _name.c_str(), _id.c_str());
+    //LOGD(LOGTAG, "Initializing ScheduleCore object '%s' %s", _name.c_str(), _id.c_str());
     id_hash = GetHash(schedule_id);
     previous = std::time(NULL);
     AddToSchedules(this);
@@ -255,13 +258,11 @@ public:
   // TODO: Allow a user-entered value to be passed. See below for prototype (works in tests).
   void setCronNext() {
     if (timeIsValid()) {  // If system time is not valid, skip all of this.
-      LOGD(LOGTAG, "setCronNext() '%s', timeIsValid(): TRUE", schedule_name.c_str());
-      // TODO to handle custom input:
-      // if input is valid-time, ! bypass, > now, < cronNextCalc(), then cronnext=input;
+      // LOGD(LOGTAG, "setCronNext() '%s', timeIsValid(): TRUE", schedule_name.c_str());
       if (crontab == (std::string)"" || bypass) {
         cronnext = 0;
 
-        // LOGD(LOGTAG, "setCronNext() '%s' to [0], while crontab: %s, bypass: %i",
+        // LOGD(LOGTAG, "setCronNext() '%s' to [0], while crontab: %s, bypass: %d",
         //           schedule_name.c_str(),
         //           crontab.c_str(),
         //           bypass
@@ -270,7 +271,7 @@ public:
       else {
         cronnext = cronNextCalc();
         
-        // LOGD(LOGTAG, "setCronNext() '%s' to [%i, %s]",
+        // LOGD(LOGTAG, "setCronNext() '%s' to [%lu, %s]",
         //   schedule_name.c_str(),
         //   //schedule_id.c_str(),
         //   cronnext,
@@ -278,7 +279,7 @@ public:
         // );
       }
       
-      LOGD(LOGTAG, "setCronNext() '%s' to [%i, %s], while crontab: %s, bypass: %i",
+      LOGD(LOGTAG, "setCronNext() '%s' to [%lu, %s], while crontab: %s, bypass: %d",
                 schedule_name.c_str(),
                 cronnext,
                 timeToString(cronnext).c_str(),
@@ -294,6 +295,9 @@ public:
 
 
   // Experimental overload sets cron_next from user input time_t.
+  // The design logic was: if input is valid-time, ! bypass, > now, < cronNextCalc(), then cronnext=input;
+  // however it might not be exactly that in the code.
+  //
   // To get time_t from user input string, use:
   // 
   //   std::time_t parsed = stringToTime(input);
@@ -311,10 +315,10 @@ public:
       // we need to make sure to clear out the manuall cronnext after it's used,
       // otherwise it'll trigger with every loop.
     ){
-      //LOGD(LOGTAG, "Setting cronnext from input '%s' %i", timeToString(input).c_str(), input);
+      //LOGD(LOGTAG, "Setting cronnext from input '%s' %lu", timeToString(input).c_str(), input);
       cronnext = input;
       
-      LOGD(LOGTAG, "Setting cronnext for '%s' %s [%i, %s]",
+      LOGD(LOGTAG, "Setting cronnext with input for '%s' %s [%lu, %s]",
         schedule_name.c_str(),
         schedule_id.c_str(),
         input,
@@ -322,7 +326,7 @@ public:
       );
     }
     else {
-      LOGD(LOGTAG, "setCronNext() skipping invalid input '%s' %s [%i, %s]",
+      LOGD(LOGTAG, "setCronNext() skipping due to invalid input or current time '%s' %s [%lu, %s]",
         schedule_name.c_str(),
         schedule_id.c_str(),
         input,
@@ -445,7 +449,7 @@ public:
     time_t t_time = mktime(&tm_struct);
   
     // Log the time_t value
-    //LOGD(LOGTAG, "stringToTime() parsed time '%s' in seconds since epoch: %i", input.c_str(), t_time);
+    //LOGD(LOGTAG, "stringToTime() parsed time '%s' in seconds since epoch: %lu", input.c_str(), t_time);
     // Log the reverse operation.
     //LOGD(LOGTAG, "stringToTime() reverse operation: %s", timeToString(t_time).c_str());
   
@@ -457,6 +461,7 @@ protected:
   
   // This is a mock function for testing.
   // This is needed here so this file can compile independantly of ../dynamic_cron_esphome.h.
+  // This expects to be overridden in the dynamic_cron_esphome.h file.
   virtual void savePrefs() {
     // nothing happening here, nothing to see...
   }
@@ -465,7 +470,7 @@ protected:
   // Adds a schedule object to a globally accessible vector array 'all_schedules'.
   // Are we still using this?
   static void AddToSchedules(ScheduleCore* schedule) {
-      LOGD(LOGTAG, "Adding Schedule '%s' %s to Schedules vector", schedule->schedule_name.c_str(), schedule->schedule_id.c_str());
+      //LOGD(LOGTAG, "Adding Schedule '%s' %s to Schedules vector", schedule->schedule_name.c_str(), schedule->schedule_id.c_str());
       Schedules().push_back(schedule);
   }
   
@@ -556,9 +561,9 @@ protected:
     // Valid if year is >= 1969 (1970 is the start of 'epoch' time).
     bool rslt = ((now_tm.tm_year + 1900) > 2019);
     
-    if (! rslt) {
-      LOGE(LOGTAG, "timeIsValid() failed with '%s'", timeToString(now).c_str());
-    };
+    //if (! rslt) {
+    //  LOGE(LOGTAG, "timeIsValid() failed with '%s'", timeToString(now).c_str());
+    //};
     
     return rslt;
   }
