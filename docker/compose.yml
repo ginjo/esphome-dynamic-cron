@@ -6,16 +6,31 @@ services:
     hostname: esphome
     image: esphome/esphome:2024.7.3
     volumes:
-      # This is the directory where platformio will store doloaded source code and library files.
+      # Note that the expected working directory on the docker host is the
+      # platformio project root directory (this external component project).
+      # Environment variables allow you to change some of the directory mappings,
+      # but keep in mind that building/testing this component or running any of the
+      # included scripts, from anywhere other than the project root directory,
+      # may not produce the expected results.
+      #
+      # Directory where platformio will store downloaded source code and library files.
+      # It appears that platformio is looking in /root within the container
+      # for the .platformio, so we're mapping the host .platformio to /root/.platformio
+      # within the container, and also to /DynamicCron/.platformio .
       - "${DOT_PLATFORMIO:-$PWD/.platformio}:/root/.platformio:rw"
       - "${DOT_PLATFORMIO:-$PWD/.platformio}:/DynamicCron/.platformio:rw"
-      # Should map the location of the external component project directory on the host.
+      # Directory where platformio will output build and firmware files.
+      - "${DOT_PIO:-$PWD/.pio}:/DynamicCron/.pio:rw"
+      # Maps the location of the external component project directory on the host.
       - "$PWD:/DynamicCron:rw"
+      # The src/ directory is where platformio will look for esphome sourc files.
+      # The default is the /esphome/ directory in the esphome/esphome docker image.
+      - "${SRC_DIR:-$PWD/src}:/DynamicCron/src:ro"
       # Enables timezone resolution.
       - "/etc/localtime:/etc/localtime:ro"
     environment:
       TZ: America/Los_Angeles
-    # We're overriding the entrypoint of "/entrypoint.sh",
+    # We're overriding the esphome/esphome image entrypoint of "/entrypoint.sh",
     # so we can start up the container as a bash session.
     entrypoint: [""]
     # If you don't provide a command when launching the docker container,
