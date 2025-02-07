@@ -155,7 +155,7 @@ void setFirmwareTimestamp(uint64_t val = TIMESTAMP_MOCK) {
 void setUp(void) {
   // Performed before ever test is run.
   
-  std::cout << "SETUP\n";
+  //std::cout << "SETUP\n";
   
   // We need to use dynamic (heap?) memory,
   // otherwise the object goes out of scope and is deleted,
@@ -168,7 +168,7 @@ void setUp(void) {
 void tearDown(void) {
   // Performed after every test is run.
   
-  std::cout << "TEARDOWN\n";
+  //std::cout << "TEARDOWN\n";
   
   delete ScheduleMockInst;
 }

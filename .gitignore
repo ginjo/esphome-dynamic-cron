@@ -2,11 +2,20 @@
 .pio/
 .platformio/
 .esphome/
-.env
+/.env
 /core
 /src/
 
 # These should be at end of list.
 # It gives us a way to mark a directory as 'keep'.
+#
+# Update: I thought this worked, but it doesn't.
+# .gitkeep is not part of git.
+#
+# You can make a .gitkeep file preserve an ignored directory by doing this:
+#   Add <ignored-folder>/.gitkeep to your repository.
+#   This works because .gitignore only applies to files
+#   that are NOT checked into the repository. Once
+#   a file is checked in, .gitignore has no effect on it.
 !.gitkeep
 
