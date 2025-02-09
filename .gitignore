@@ -5,6 +5,7 @@
 /.env
 /core
 /src/
+._*
 
 # These should be at end of list.
 # It gives us a way to mark a directory as 'keep'.

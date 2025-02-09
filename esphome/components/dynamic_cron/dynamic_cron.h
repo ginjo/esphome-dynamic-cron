@@ -40,8 +40,8 @@ namespace dynamic_cron {
 static const char *LOGTAG = "dynamic_cron";
 
 // This is the timestamp of the firmware build.
-// This will be set in python and is likely nanoseconds from epoch.
-uint64_t TIMESTAMP;
+// This will be set in python and is seconds from epoch.
+int TIMESTAMP;
 
 
 class MyLogger {

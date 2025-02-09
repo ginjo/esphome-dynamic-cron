@@ -1,11 +1,19 @@
+#pragma once
+
 #include <unity.h>
-//#include <../esphome/components/dynamic_cron/dynamic_cron.h>
-#include <esphome/components/dynamic_cron/dynamic_cron.h>
+//#include <typeinfo>
+#include "dynamic_cron.h"
 
-//#include <dynamic_cron.h>
+#if !defined(IS_NATIVE) || IS_NATIVE != 1
+  #include "test_dynamic_cron_esphome.h"
+#endif
 
 
-class ScheduleMock : public esphome::dynamic_cron::ScheduleCore {
+namespace esphome {
+namespace dynamic_cron {
+  
+
+class ScheduleMock : public ScheduleCore {
 public:
     
   ScheduleMock() :
@@ -49,28 +57,6 @@ void initScheduleMock(ScheduleMock* obj) {
 }
 
 
-void setUp(void) {
-  // Performed before ever test is run.
-  
-  //std::cout << "SETUP\n";
-  
-  // We need to use dynamic (heap?) memory,
-  // otherwise the object goes out of scope and is deleted,
-  // even though the var is declared at the top-level.
-  // This way, the object persists until we delete it.
-  // Note: I think 'new' always returns a pointer.
-  ScheduleMockInst = new ScheduleMock;
-}
-
-void tearDown(void) {
-  // Performed after every test is run.
-  
-  //std::cout << "TEARDOWN\n";
-  
-  delete ScheduleMockInst;
-}
-
-
 // TESTS - Covers most but not all functions in dynamic_cron.h, either directly or indirectly.
 //         Does NOT cover anything in dynamic_cron_esphome.h (yet), as that file
 //         requires links to arduino and esphome hardware objects.
@@ -91,8 +77,11 @@ void test_schedule_receives_lambda(void) {
 
 void test_schedule_contains_schedules(void) {
   // Outputs the Schedules() array size, for debugging.
-  //std::cout << esphome::dynamic_cron::ScheduleCore::Schedules().size() << "\n";
-  TEST_ASSERT_TRUE(esphome::dynamic_cron::ScheduleCore::Schedules()[0] == ScheduleMockInst);
+  //std::cout << ScheduleCore::Schedules().size() << "\n";
+  // Compares the last member in Schedules(). We need that when running alongside
+  // a fully built esphome project, since the first member will likely be
+  // one of the project's Schedule instances.
+  TEST_ASSERT_TRUE(ScheduleCore::Schedules().back() == ScheduleMockInst);
 }
 
 void test_schedule_calculates_cronnext(void) {
@@ -152,3 +141,76 @@ void test_schedule_cronLoop(void) {
   std::time_t new_time = ScheduleMockInst->getCronNext();
   TEST_ASSERT_TRUE(std::difftime(new_time, old_time) > 0);
 }
+
+
+// RUNNER
+
+int TEST_RUN_COUNT = 0;
+int TEST_RUN_MAX   = 3;
+
+int DynamicCronTestRunner(void) {
+  std::cout << "BEGIN DYNAMIC CRON TESTS\n";
+  UNITY_BEGIN();
+  
+  // Runs these tests in all environments, including esphome build.
+  RUN_TEST(test_schedule_receives_name);
+  RUN_TEST(test_schedule_receives_id);
+  RUN_TEST(test_schedule_receives_lambda);
+  RUN_TEST(test_schedule_contains_schedules);
+  RUN_TEST(test_schedule_calculates_cronnext);
+  RUN_TEST(test_schedule_cronNextExpired);
+  RUN_TEST(test_schedule_cronLoop);
+
+  // Runs these tests in esp environment and esphome build.
+  #if !defined(IS_NATIVE) || IS_NATIVE != 1
+    RUN_TEST(test_prefs_initialized);
+  #endif
+  
+  // Runs these tests only in esp environment (not esphome build).
+  #if defined(IS_NATIVE) && IS_NATIVE !=1
+    RUN_TEST(test_prefs_updates_timestamp);
+  #endif
+
+  std::cout << "END DYNAMIC CRON TESTS\n";
+  return UNITY_END();
+}
+
+int RunDynamicCronTests(void) {
+  if (TEST_RUN_COUNT < TEST_RUN_MAX) {
+    TEST_RUN_COUNT += 1;
+    return DynamicCronTestRunner();
+  }
+  else {
+    return 1;
+  }
+}
+
+
+} // esphome
+} // dynamic_cron
+
+
+// UNITY SETUP / TEARDOWN
+// These must be top-level functions.
+
+void setUp(void) {
+  // Performed before ever test is run.
+  
+  //std::cout << "SETUP\n";
+  
+  // We need to use dynamic (heap?) memory,
+  // otherwise the object goes out of scope and is deleted,
+  // even though the var is declared at the top-level.
+  // This way, the object persists until we delete it.
+  // Note: I think 'new' always returns a pointer.
+  esphome::dynamic_cron::ScheduleMockInst = new esphome::dynamic_cron::ScheduleMock;
+}
+
+void tearDown(void) {
+  // Performed after every test is run.
+  
+  //std::cout << "TEARDOWN\n";
+  
+  delete esphome::dynamic_cron::ScheduleMockInst;
+}
+

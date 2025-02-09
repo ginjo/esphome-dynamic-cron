@@ -3,14 +3,20 @@
 // run on esp32 hardware with the 'esphome' test environment,
 // and not in the 'native' test environment.
 
+#pragma once
+
 #include <unity.h>
-//#include "../esphome/components/dynamic_cron/dynamic_cron_esphome.h"
-#include <esphome/components/dynamic_cron/dynamic_cron_esphome.h>
-#include "test_dynamic_cron.cpp"
+#include "dynamic_cron_esphome.h"
+
+// We now include this at the bottom, because it needs this file loaded first.
+// #include "test_dynamic_cron.h"
 
 
+namespace esphome {
+namespace dynamic_cron {
+  
 
-class ScheduleEsphomeMock : public esphome::dynamic_cron::Schedule {
+class ScheduleEsphomeMock : public Schedule {
 public:
     
   ScheduleEsphomeMock() :
@@ -36,8 +42,13 @@ void test_prefs_updates_timestamp(void) {
   // TODO: This won't test correctly if run with esphome build.
   // It will only work in the test environments.
   ScheduleEsphomeMock schedule;
-  esphome::dynamic_cron::TIMESTAMP += 300;
+  TIMESTAMP += 300;
   auto prefs = schedule.getPrefs();
-  TEST_ASSERT_TRUE(esphome::dynamic_cron::TIMESTAMP == 1600000300);
+  TEST_ASSERT_TRUE(TIMESTAMP == 1600000300);
 }
 
+
+} // esphome
+} // dynamic_cron
+
+#include "test_dynamic_cron.h"

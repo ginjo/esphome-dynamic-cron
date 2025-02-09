@@ -181,7 +181,7 @@ protected:
     Preferences   api;
     Schedule*     schedule;
     
-    uint64_t      initialized;  // TIMESTAMP of firmware in nanoseconds at compile time (from __init__.py).
+    int           initialized;  // TIMESTAMP of firmware in seconds-since-epoch at compile time (from __init__.py).
     std::string   crontab;
     bool          ignore_missed;
     bool          bypass;
@@ -211,14 +211,14 @@ protected:
       // Initializes namespace timestamp, if not already done.
       
       if (! api.isKey("initialized")) {
-        LOGD(LOGTAG, "Initializing prefs namespace '%s' %s with stamp '%llu'",
+        LOGD(LOGTAG, "Initializing prefs namespace '%s' %s with stamp '%i'",
           schedule->schedule_name.c_str(),
           schedule->id_hash.c_str(),
           TIMESTAMP
         );
         
-        // Sets the 'initialized' preference field to TIMESTAMP (nanoseconds, from __init__.py).
-        api.putULong64("initialized", TIMESTAMP);
+        // Sets the 'initialized' preference field to TIMESTAMP (seconds, from __init__.py).
+        api.putInt("initialized", TIMESTAMP);
         
         size_t number_free_entries = api.freeEntries();
         LOGD(LOGTAG, "There are %u free entries available in the namespace table '%s' %s",
@@ -229,7 +229,7 @@ protected:
       }
       
       // Retrieves the preference 'initialized' field.
-      initialized = api.getULong64("initialized", 0);
+      initialized = api.getInt("initialized", 0);
 
       // Clears preferences namespace, if conditions allow.
       //
@@ -237,9 +237,9 @@ protected:
       //
       bool rslt = false;
       if (force == true || schedule->clear_prefs == true && TIMESTAMP != 0 && initialized != TIMESTAMP) {
-        rslt = api.clear(); // && api.putULong64("initialized", TIMESTAMP);
+        rslt = api.clear(); // && api.putInt("initialized", TIMESTAMP);
         if (rslt) {
-          LOGD(LOGTAG, "Re-initialized prefs namespace '%s' %s with stamp '%llu'",
+          LOGD(LOGTAG, "Re-initialized prefs namespace '%s' %s with stamp '%i'",
             schedule->schedule_name.c_str(),
             schedule->id_hash.c_str(),
             TIMESTAMP
@@ -249,10 +249,10 @@ protected:
       
       // Updates 'initialized' if different from TIMESTAMP.
       if (TIMESTAMP != 0 && initialized != TIMESTAMP) {
-        api.putULong64("initialized", TIMESTAMP);
-        initialized = api.getULong64("initialized", 0);
+        api.putInt("initialized", TIMESTAMP);
+        initialized = api.getInt("initialized", 0);
         
-        LOGD(LOGTAG, "Updated prefs namespace '%s' %s with stamp '%llu'",
+        LOGD(LOGTAG, "Updated prefs namespace '%s' %s with stamp '%i'",
           schedule->schedule_name.c_str(),
           schedule->id_hash.c_str(),
           initialized

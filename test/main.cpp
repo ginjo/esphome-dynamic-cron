@@ -51,84 +51,72 @@
 #if IS_NATIVE == 1
   #include <ArduinoFake.h>
   // #include <../esphome/components/dynamic_cron/dynamic_cron.h>
-  #include "esphome_tests/test_dynamic_cron.cpp"
+  // #include "esphome_tests/test_dynamic_cron.cpp"
+  #include <test_dynamic_cron.h>
 #else
-  #include "esphome_tests/esphome_tests.cpp"
+  // #include "esphome_tests/esphome_tests.cpp"
+  #include <test_dynamic_cron_esphome.h>
 #endif
 
 // In actual firmware build, python scripts set the firmware TIMESTAMP.
 // See dynamic_cron.h
 // Note: static global variables are only accessible from the file where they're declared/defined.
-//static uint64_t TIMESTAMP_MOCK = (uint64_t)std::time(NULL);
+//static int TIMESTAMP_MOCK = (int)std::time(NULL);
 #define TIMESTAMP_MOCK std::time(nullptr)
 
 
-// Example of getting system time with gettimeofday() and converting it to other formats.
-// This is currently only used for local logs.
-int getSystemTime() {
-  struct timeval tv;
-  gettimeofday(&tv, nullptr);
+namespace esphome {
+namespace dynamic_cron {
 
-  // Convert to time_t
-  time_t now = tv.tv_sec;
+  // Example of getting system time with gettimeofday() and converting it to other formats.
+  // This is currently only used for local logs.
+  int getSystemTime() {
+    struct timeval tv;
+    gettimeofday(&tv, nullptr);
 
-  // Use ctime to get a string representation
-  std::string timeString = ctime(&now);
+    // Convert to time_t
+    time_t now = tv.tv_sec;
 
-  // Remove trailing newline
-  timeString.erase(timeString.size() - 1);
+    // Use ctime to get a string representation
+    std::string timeString = ctime(&now);
 
-  // Append microseconds
-  timeString += "." + std::to_string(tv.tv_usec);
+    // Remove trailing newline
+    timeString.erase(timeString.size() - 1);
 
-  std::cout << timeString << std::endl;
+    // Append microseconds
+    timeString += "." + std::to_string(tv.tv_usec);
+
+    std::cout << timeString << std::endl;
   
-  return int(now);
-}
+    return int(now);
+  }
 
-// Sets system clock to a specific time, given seconds-since-epoch.
-// Search google for 'c++ settimeofday()' and AI will show you about this.
-//
-int setSystemTime(int seconds = 1600000000) { // 2020-09-13 12:26:40
-  struct timeval tv;
-  tv.tv_sec = seconds; // Set a specific time (seconds since Epoch)
-  tv.tv_usec = 0;
-  std::cout << "Setting system time: " << ScheduleMockInst->timeToString((std::time_t)seconds).c_str() << "\n";
-  return settimeofday(&tv, NULL);
-}
+  // Sets system clock to a specific time, given seconds-since-epoch.
+  // Search google for 'c++ settimeofday()' and AI will show you about this.
+  //
+  int setSystemTime(int seconds = 1600000000) { // 2020-09-13 12:26:40
+    struct timeval tv;
+    tv.tv_sec = seconds; // Set a specific time (seconds since Epoch)
+    tv.tv_usec = 0;
+    std::cout << "Setting system time: " << ScheduleMockInst->timeToString((std::time_t)seconds).c_str() << "\n";
+    return settimeofday(&tv, NULL);
+  }
 
-void printSystemTime() {
-  std::time_t now = std::time(NULL);
-  std::cout << "System time: " << ScheduleMockInst->timeToString(now).c_str() << "\n";
-}
+  void printSystemTime() {
+    std::time_t now = std::time(NULL);
+    std::cout << "System time: " << ScheduleMockInst->timeToString(now).c_str() << "\n";
+  }
 
-void setFirmwareTimestamp(uint64_t val = TIMESTAMP_MOCK) {
-  std::cout << "Current firmware TIMESTAMP is " << std::to_string(esphome::dynamic_cron::TIMESTAMP) << "\n";
+  void setFirmwareTimestamp(int val = TIMESTAMP_MOCK) {
+    std::cout << "Current firmware TIMESTAMP is " << std::to_string(TIMESTAMP) << "\n";
   
-  esphome::dynamic_cron::TIMESTAMP = val; //esphome::dynamic_cron::TIMESTAMP_MOCK;
-  std::cout << "New firmware TIMESTAMP is " << std::to_string(esphome::dynamic_cron::TIMESTAMP) << "\n";
-}
+    TIMESTAMP = val; //TIMESTAMP_MOCK;
+    std::cout << "New firmware TIMESTAMP is " << std::to_string(TIMESTAMP) << "\n";
+  }
 
 
-
-int runUnityTests(void) {
-  UNITY_BEGIN();
-  RUN_TEST(test_schedule_receives_name);
-  RUN_TEST(test_schedule_receives_id);
-  RUN_TEST(test_schedule_receives_lambda);
-  RUN_TEST(test_schedule_contains_schedules);
-  RUN_TEST(test_schedule_calculates_cronnext);
-  RUN_TEST(test_schedule_cronNextExpired);
-  RUN_TEST(test_schedule_cronLoop);
-  
-  #if IS_NATIVE != 1
-    RUN_TEST(test_prefs_initialized);
-    RUN_TEST(test_prefs_updates_timestamp);
-  #endif
-  
-  return UNITY_END();
-}
-
+} // esphome
+} // dynamic_cron
 
 
 // IMPLEMENTATIONS - you can remove unnecessary implementations if not using them //
@@ -137,27 +125,27 @@ int runUnityTests(void) {
 //int main(void) {
 int main( int argc, char **argv ) {
   //getSystemTime();
-  printSystemTime();
+  esphome::dynamic_cron::printSystemTime();
   
   #if IS_NATIVE != 1
-    setSystemTime();
+    esphome::dynamic_cron::setSystemTime();
   #endif
   
-  setFirmwareTimestamp();
+  esphome::dynamic_cron::setFirmwareTimestamp();
     
-  return runUnityTests();
+  return esphome::dynamic_cron::RunDynamicCronTests();
 }
 
 // For Arduino framework
 void setup() {  
   //getSystemTime();
-  printSystemTime();
+  esphome::dynamic_cron::printSystemTime();
   
   #if IS_NATIVE != 1
-    setSystemTime();
+    esphome::dynamic_cron::setSystemTime();
   #endif
   
-  setFirmwareTimestamp();
+  esphome::dynamic_cron::setFirmwareTimestamp();
   
   // Wait ~2 seconds before the Unity test runner
   // establishes connection with a board Serial interface
@@ -165,7 +153,7 @@ void setup() {
   // within this same scope, provided by Arduino or Esphome.
   ::delay(2000);
 
-  runUnityTests();
+  esphome::dynamic_cron::RunDynamicCronTests();
 }
 
 void loop() {}

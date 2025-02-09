@@ -13,6 +13,7 @@
   * Multiple schedule instances to cover any number of ESPHome recurring tasks.
   * Remembers missed trigger times after power failure or reboot.
 
+  ![Screenshot of Dynamic Cron interface in ESPHome](img/DynamicCron.png)
 
 ## Requirements
 
