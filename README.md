@@ -67,7 +67,7 @@
         # You must return true or false from the lambda.
   ```
 
-  Here's a link to a fully functioning [ESPHome configuration file](test/esphome_example.yml)
+  Here's a link to a fully functioning [ESPHome configuration file](test/example_esphome.yml)
   that demonstrates dynamic_cron.
 
 
