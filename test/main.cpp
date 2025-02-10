@@ -46,17 +46,24 @@
 // See here for faketime library, which could help isolate datetime manipulations:
 //   https://github.com/wolfcw/libfaketime
 
-//#include <croncpp.h>
-
 #if IS_NATIVE == 1
   #include <ArduinoFake.h>
-  // #include <../esphome/components/dynamic_cron/dynamic_cron.h>
-  // #include "esphome_tests/test_dynamic_cron.cpp"
-  #include <test_dynamic_cron.h>
 #else
-  // #include "esphome_tests/esphome_tests.cpp"
-  #include <test_dynamic_cron_esphome.h>
+  #include <Arduino.h>
 #endif
+
+#include <test_dynamic_cron.h>
+
+// #if IS_NATIVE == 1
+//   #include <ArduinoFake.h>
+//   // #include <../esphome/components/dynamic_cron/dynamic_cron.h>
+//   // #include "esphome_tests/test_dynamic_cron.cpp"
+//   #include <test_dynamic_cron.h>
+// #else
+//   // #include "esphome_tests/esphome_tests.cpp"
+//   #include <test_dynamic_cron_esphome.h>
+// #endif
+
 
 // In actual firmware build, python scripts set the firmware TIMESTAMP.
 // See dynamic_cron.h

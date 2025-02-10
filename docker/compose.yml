@@ -5,6 +5,8 @@ services:
     container_name: esphome
     hostname: esphome
     image: esphome/esphome:2024.7.3
+    # This image is 50% bigger (about 643Mb).
+    #image: esphome/esphome:2024.12.4
     volumes:
       # Note that the expected working directory on the docker host is the
       # platformio project root directory (this external component project).

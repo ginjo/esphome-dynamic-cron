@@ -38,6 +38,7 @@ void test_prefs_initialized(void) {
   TEST_ASSERT_TRUE(prefs.initialized > 0);
 }
 
+// Change this, or add another test, to ...has_matching_timestamp
 void test_prefs_updates_timestamp(void) {
   // TODO: This won't test correctly if run with esphome build.
   // It will only work in the test environments.
@@ -51,4 +52,4 @@ void test_prefs_updates_timestamp(void) {
 } // esphome
 } // dynamic_cron
 
-#include "test_dynamic_cron.h"
+//#include "test_dynamic_cron.h"

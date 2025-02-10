@@ -1,18 +1,5 @@
 
-// NOTE: If ignore_missed is enabled, we don't save cronnext to prefs,
-//       even if legit time is in cronnext field. This is not a problem, when there is
-//       already data in the cronnext prefs field. It's only at first boot, when this issue arises.
-//
-// SOLUTION (maybe): Consolidate all prefs-retrieval calls to their own wrapper methods.
-//       Within each wrapper, figure out a way to insert dummy data into each prefs field,
-//       at boot, if the field is empty and the getter returns a default value.
-//       But not the user-facing default though. Use an internal default that indicates that the prefs
-//       field is empty. Whenever this default value is returned from the getter, return
-//       the user-facing default back to the program.
-//       
-//       Update: The prefs object has a method to test for existence of a key: prefs.isKey("key-name").
-//       See here: https://docs.espressif.com/projects/arduino-esp32/en/latest/tutorials/preferences.html
-//
+
 // TODO: Consider setting cronnext to 0, whenever ignore_missed is set to true
 //
 // TODO: Consider saving the prefs object within the Schedule, instead of loading it up every run though the loop.
@@ -26,19 +13,10 @@
 #pragma once
 
 #include "Arduino.h"
-// #include "esphome/core/component.h"
-// #include "esphome/core/application.h"
-#include <croncpp.h>
 #include <iostream>
-#include <iomanip>
 #include <string>
-// #include <ctime> do we need this for stringToTime() ?
-#include <regex>
-#include <vector>
-#include <map>
-#include <algorithm>
 #include <Preferences.h>
-#include <time.h>
+#include <ctime>
 
 #include "esphome/core/component.h"
 #include "esphome/core/application.h"
@@ -130,22 +108,6 @@ public:
   {
     LOGD(LOGTAG, "Initializing Schedule '%s' %s", _name.c_str(), _id.c_str());
   } // end Schedule(...).
-
-
-  // These won't work here, because the original methods need to be virtual,
-  // but templated methods can't be virtual.
-  //
-  // // Forwards local call method from core.h to ESP logging macros.
-  // template<typename... Args>
-  // static void LOGD(const char *tag, const char *fmt, Args... args) {
-  //   ESP_LOGD(tag, fmt, args...);
-  // }
-  // 
-  // // Forwards local call method from core.h to ESP logging macros.
-  // template<typename... Args>
-  // static void LOGE(const char *tag, const char *fmt, Args... args) {
-  //   ESP_LOGE(tag, fmt, args...);
-  // }
 
 
   void setClearPrefs(bool val) {
@@ -374,6 +336,8 @@ protected:
 }; // Schedule class
 
 
+// ESPHOME COMPONENTS
+
 class BypassSwitch : public switch_::Switch, public Component, public MyLogger {
 public:
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
@@ -539,7 +503,6 @@ public:
     //ESP_LOGD(LOGTAG, "CrontabTextField::control(): %d", &_state);
     schedule->setCrontab(_state);
   }
-  
   
 }; // CrontabTextField class
 

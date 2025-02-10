@@ -32,6 +32,7 @@
 #include <map>
 #include <algorithm>
 #include <time.h>
+#include <ctime>
 
 
 namespace esphome {
@@ -48,6 +49,8 @@ class MyLogger {
 public:
   // We created our own LOGx functions, since we need to access them independently
   // from esphome (especially during test runs).
+  // Note: Remember that templated methods can't be virtual.
+  //
   template<typename... Args>
   static void LOGD(const char *tag, const char *fmt, Args... args) {
       printf("[D][%s]: ", tag);

@@ -13,7 +13,10 @@
   * Multiple schedule instances to cover any number of ESPHome recurring tasks.
   * Remembers missed trigger times after power failure or reboot.
 
-  ![Screenshot of Dynamic Cron interface in ESPHome](img/DynamicCron.png)
+  Here is an example web GUI of a generic ESPHome project that defines two
+  dynamic_cron schedules.
+
+  ![Screenshot of dynamic_cron interface in ESPHome](img/DynamicCron.png)
 
 ## Requirements
 
@@ -63,10 +66,15 @@
           
         # You must return true or false from the lambda.
   ```
-  
+
+  Here's a link to a fully functioning [ESPHome configuration file](test/esphome_example.yml)
+  that demonstrates dynamic_cron.
+
 
 ## Options
 
+  These are the available options you can use to configure each instance of dynamic_cron.
+ 
   * **name**: string, *optional*
   * **id**:   string, *optional*
 

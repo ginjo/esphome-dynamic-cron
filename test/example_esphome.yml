@@ -1,0 +1,85 @@
+### This is a basic esphome firmware definition for the sole purpose
+### of demonstrating the Dynamic Cron external component.
+
+esphome:
+  name: dynamicron
+  friendly_name: Dynamic Cron Scheduler
+  on_boot:
+    - then:
+      - lambda: |-
+          printf("[I] Dynamic Cron firmware timestamp: %i\n", esphome::dynamic_cron::TIMESTAMP);
+
+esp32:
+  board: esp32doit-devkit-v1
+  framework:
+    type: arduino
+
+# Enables logging
+logger:
+
+# Enables Home Assistant API
+# api:
+#   reboot_timeout: 0s # Never reboots due to home-assistant connection.
+#   encryption:
+#     key: !secret api_encryption_key
+
+### Over-the-air updates
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  reboot_timeout: 0s # Never reboots due to wifi connection.
+
+  # Enables fallback hotspot (captive portal, if that's enabled) in case wifi connection fails
+  ap:
+    ssid: "dynamicron"
+    password: !secret wifi_password
+    ap_timeout: 10s # Enables access-point ssid if can't connect to wifi ssid.
+
+web_server:
+  version: 3
+  port: 80
+  local: true
+
+# Enables wifi-setup and flashing interface if we fallback to ap mode (see ap:).
+captive_portal:
+
+# We need 'time' for any scheduler to work properly.
+time:
+  #- platform: homeassistant
+  - platform: sntp
+    servers:
+      - 0.pool.ntp.org
+      - 1.pool.ntp.org
+      - 2.pool.ntp.org
+    id: esp_time
+
+
+### EXTERNAL COMPONENTS
+
+external_components:
+  - source:
+      type: git
+      url: https://github.com/ginjo/esphome-dynamic-cron
+
+dynamic_cron:
+  - name: Lawn
+    id: lawn_schedule
+    disabled: true
+    crontab: "0 0 2 * * *"
+    lambda: |-
+      ESP_LOGD("lawn", "Lawn schedule lambda running @ %s", lawn_schedule->timeToString().c_str());
+      return {true};
+  
+  - name: Drip
+    id: drip_schedule
+    crontab: "0 0 1 * * *"
+    ignore_missed: true
+    #clear_prefs: true
+    lambda: |-
+      ESP_LOGD("drip", "Drip schedule lambda running @ %s", drip_schedule->timeToString().c_str());
+      return {true};
+
