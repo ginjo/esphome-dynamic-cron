@@ -1,3 +1,4 @@
+```
 ### This is a basic esphome firmware definition for the sole purpose
 ### of demonstrating the Dynamic Cron external component.
 
@@ -83,3 +84,4 @@ dynamic_cron:
       ESP_LOGD("drip", "Drip schedule lambda running @ %s", drip_schedule->timeToString().c_str());
       return {true};
 
+```

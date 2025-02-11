@@ -2,16 +2,15 @@
 
   This [ESPHome](https://esphome.io) External Component provides a cron interface for scheduling anything in ESPHome.
   Live editable crontab expressions, without requiring re-flash or reboot, set this component
-  apart from the built-in ESPHome cron functionality. This component works with or without
-  Home Assistant.
+  apart from the built-in ESPHome cron functionality.
   
   Features:
   
-  * Automate trigger times entirely within ESPHome, no home-assistant required.
   * Live editable cron expressions, no re-flash or reboot required.
-  * Multiple cron expressions for each schedule instance.
-  * Multiple schedule instances to cover any number of ESPHome recurring tasks.
+  * Multiple cron expressions for each schedule.
+  * Multiple schedules to cover any number of ESPHome recurring tasks.
   * Remembers missed trigger times after power failure or reboot.
+  * Automate trigger times entirely within ESPHome, no home-assistant required.
 
   Here is an example web GUI of a generic ESPHome project that defines two
   dynamic_cron schedules.
@@ -20,15 +19,15 @@
 
 ## Requirements
 
-  This component has three dependencies:
-  1. [Croncpp](https://github.com/mariusbancila/croncpp)
-  2. [Preferences](https://docs.espressif.com/projects/arduino-esp32/en/latest/api/preferences.html)
-  3. The ESPHome firmware must be compiled using the Arduino framework.
+  This component has two external dependencies that are automatically managed:
+  1. [Croncpp](https://github.com/mariusbancila/croncpp) for parsing cron expressions
+  2. [Preferences](https://docs.espressif.com/projects/arduino-esp32/en/latest/api/preferences.html) for storing settings to esp32 NVS
   
-  These libraries are loaded and managed automatically within the dynamic\_cron library.
   See below for more info on the Croncpp and Preferences libraries.
   
-  There are two things to be aware of when using this library:
+  There are three things to be aware of when using this library:
+  
+  * The ESPHome firmware must be compiled using the Arduino framework, not the ESP-IDF framework.
   
   * You should define a `time` component in your ESPHome yaml config, as
     scheduling software needs a reliable time source.
@@ -43,7 +42,7 @@
 
   Put the following code in your ESPHome yaml config.
   This loads the dynamic_cron library into the ESPHome project as an External Component
-  and defines one or more schedule instances. Each schedule instance calls a user-defined
+  and defines one or more schedules. Each schedule calls a user-defined
   lambda, when triggered by the cron scheduler.
   
   ```yaml
@@ -73,7 +72,8 @@
 
 ## Options
 
-  These are the available options you can use to configure each instance of dynamic_cron.
+  These are the available options you can use to configure each instance of a dynamic_cron schedule.
+  See below for more detail on some of these options.
  
   * **name**: string, *optional*
   * **id**:   string, *optional*
@@ -125,7 +125,7 @@
   * The `id` of the schedule is not changed.
   * The `clear_prefs` configuration option is not set to `true`.
   
-  When defaults are specified in the configuration, they will be used when ANY of these are true:
+  When defaults are specified in the configuration, they will be used when ANY of the following are true:
   * `clear_prefs` option is set before building/flashing the firmware.
   * No preferences have ever been set for this schedule `id`.
   * During runtime, if a needed preference cannot be found (error or bug situation).
@@ -136,7 +136,7 @@
 
 ## Usage
     
-  Once your ESP device is up and running, there will be 4 entities available for each schedule instance created.
+  Once your ESP device is up and running, there will be 4 entities available for each schedule created.
   These entities can be accessed through the ESPHome web server or through the API, including Home Assistant.
   
   * Crontab (text field)
@@ -149,6 +149,7 @@
   Enter one or more cron expressions in the Crontab text field.
   Multiple cron expressions are separated by space-bar-space, or literally " | ".
   All cron expressions entered will be used to determine the next-run time.
+  
   Example entry in crontab field:
   
     0 0 0,5 * * mon,wed,fri | 0 30 2 * * mon,wed,fri
@@ -178,15 +179,15 @@
   that next-run will be "remembered" and started at the next power-on, if ALL of the following are true:
   
   * The stored next-run is in the past.
-  * Disable Schedule is not set.
-  * Ignore Missed is not set.
+  * Disable Schedule is not set to `true`.
+  * Ignore Missed is not set to `true`.
   
-  ### Multiple Schedule Instances
+  ### Multiple Schedules
   
-  You can create multiple Schedule instances under the dynamic\_cron section.
-  For example, you may have multiple Sprinkler instances, one for lawn irrigation and one for drip irrigation.
+  You can create multiple schedules under the dynamic\_cron section.
+  For example, you may have multiple sprinkler instances, one for lawn irrigation and one for drip irrigation.
   In this case, you might want a different schedule for each, as they have different watering pattern requirements.
-  You can create a separate Schedule for each of these instances, and each schedule instance will be completely
+  You can create a separate schedule for each of these sprinkler instances, and each schedule will be completely
   independent of the others.
   
   ```
@@ -204,15 +205,61 @@
 
 ## More info on Croncpp and Preferences:
 
-  "Croncpp" is a c++ library for parsing cron expressions.
+  **Croncpp** is a c++ library for parsing cron expressions.
 
   * https://github.com/mariusbancila/croncpp
   * https://www.codeproject.com/Articles/1260511/cronpp-A-Cplusplus-Library-for-CRON-Expressions
 
-  "Preferences" is part of the arduino-esp32 library
+  **Preferences** is part of the arduino-esp32 library
   and is provided as part of the esphome build environment.
   It is used to store persistent settings and scheduling data on the ESP32 device.
 
   * https://docs.espressif.com/projects/arduino-esp32/en/latest/tutorials/preferences.html
   * https://docs.espressif.com/projects/arduino-esp32/en/latest/api/preferences.html
+
+
+## Development
+
+  To facilitate testing and further development, this repository includes a Docker directory with
+  configuration and scripts to launch a bash session from the official `esphome/esphome` Docker image.
+  
+  *Note that these developer tools are in flux and may change without notice.*
+  
+  To enter the bash session within a container created from the `esphome/esphome` Docker image:
+  
+  * Clone this repository to a machine that has Docker installed.
+  * `cd` into the cloned directory.
+  * Run `docker/dev.sh` in your terminal from within the cloned directory.
+  
+  From there, you can run the tests associated with this repository, or you can experiment
+  with alternate builds of esp32 firmware using the platformio IDE.
+  
+  ```
+    # Tests generic portions of this component in the linux container.
+    test/run.sh
+    
+    # With more verbose output
+    test/run.sh -vv
+    
+    # Tests esp32/esphome-specific portions of this component on the esp32 hardware.
+    test/run.sh -vv -e esphome
+  ```
+  
+  ### Mapped Directories
+  
+  There are three relevant directories on the Docker host that are mapped into the `esphome/esphome` container.
+  Each of these directories can be overridden with environment variable. The environment variables can be set
+  on the command line or in the `.env` file within the root directory of this project.
+  
+  * **.platformio/** Where platformio stores external and downloaded libraries during the build process.
+    The default location is within the root level of the project directory and can be overridden with the environment
+    variable `DOT_PLATFORMIO`.
+ 
+  * **.pio/** Where platformio stores build files and the resulting firmware during the build process.
+    The default location is within the root level of the project directory and can be overridden with the environment
+    variable `DOT_PIO`.   
+     
+  * **src/** Where platformio looks for the ESPHome source code during the build process.
+    The default location points to the `/esphome` directory within the container and can be
+    overridden with the environment variable `SRC_DIRECTORY`.   
 
