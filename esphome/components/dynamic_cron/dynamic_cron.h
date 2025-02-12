@@ -194,6 +194,12 @@ public:
  
 
   // Gets human-readable time of cronnext field (not the calc).
+  // TODO: Figure out how to show the error from a malformed crontab expression.
+  //       I think if a cron expression fails, the error should be sent to an
+  //       instance variable (string). If that instance var is not "", then return that
+  //       instead of nothing or '---' from this method..
+  //       Then any time the cronNextVector returns valid results,
+  //       clear the crontab error variable.
   std::string cronNextString(std::string _default="") {
     if (cronnext == 0) {
       //std::string str(_default);
@@ -548,6 +554,9 @@ protected:
   // Even if it's a valid system time, it must be within a reasonable range,
   // so it can't be 0 (1969, 1970, something like that, depending on locale).
   // We're not actually checking with ESPHome, just with the core c++ time.
+  // TODO: Consider comparing (also) against the dynamic_cron firmware timestamp,
+  // since it is in seconds-since-epoch.
+  //
   bool timeIsValid(std::time_t now = std::time(NULL)) {
     //LOGD(LOGTAG, "About to calculate within timeIsValid()", "");
     

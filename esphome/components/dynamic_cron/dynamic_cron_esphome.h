@@ -88,8 +88,11 @@ public:
   }
   
   void dump_config() override {
+    // This method will trigger once for each scheduled loaded by esphome,
+    // but it does not trigger when running the tests.
+    //
     //ESP_LOGCONFIG(LOGTAG, "Dynamic Cron Schedule");
-    LOGD(LOGTAG, "Dynamic Cron Schedule %s", schedule_name.c_str());
+    //LOGD(LOGTAG, "Dynamic Cron Schedule %s", schedule_name.c_str());
   }
   
   
