@@ -1,0 +1,33 @@
+# This is the log output at the end of the platformio 'test' run,
+# before it tries to upload the firmware over serial.
+#
+# This demonstrates how esptool.py is used to create a flashable
+# firmware.factory.bin file.
+
+"/usr/bin/python3" "/root/.platformio/packages/tool-esptoolpy/esptool.py" --chip esp32 elf2image --flash_mode dio --flash_freq 40m --flash_size 4MB -o .pio/build/esphome/firmware.bin .pio/build/esphome/firmware.elf
+esptool.py v4.5.1
+Creating esp32 image...
+Merged 2 ELF sections
+Successfully created esp32 image.
+esp32_create_combined_bin([".pio/build/esphome/firmware.bin"], [".pio/build/esphome/firmware.elf"])
+Generating combined binary for serial flashing
+    Offset | File
+ -  0x1000 | /DynamicCron/.pio/build/esphome/bootloader.bin
+ -  0x8000 | /DynamicCron/.pio/build/esphome/partitions.bin
+ -  0xe000 | /root/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin
+ - 0x10000 | /DynamicCron/.pio/build/esphome/firmware.bin
+
+Using esptool.py arguments: --chip esp32 merge_bin -o /DynamicCron/.pio/build/esphome/firmware.factory.bin --flash_size 4MB 0x1000 /DynamicCron/.pio/build/esphome/bootloader.bin 0x8000 /DynamicCron/.pio/build/esphome/partitions.bin 0xe000 /root/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin 0x10000 /DynamicCron/.pio/build/esphome/firmware.bin
+
+esptool.py v4.7.0
+Wrote 0xb3bf0 bytes to file /DynamicCron/.pio/build/esphome/firmware.factory.bin, ready to flash to offset 0x0
+esp32_copy_ota_bin([".pio/build/esphome/firmware.bin"], [".pio/build/esphome/firmware.elf"])
+
+
+###
+
+# Here is a pio-test command that should work, but it complains that it
+# can't read the source directory.
+#
+pio run -v -t buildfs -d . -c test/platformio.ini -e esphome
+

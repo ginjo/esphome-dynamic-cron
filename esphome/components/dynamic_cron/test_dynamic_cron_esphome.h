@@ -20,7 +20,7 @@ class ScheduleEsphomeMock : public Schedule {
 public:
     
   ScheduleEsphomeMock() :
-    Schedule("test-name", "test-id", []() { std::cout << "Test lambda called\n"; return true; })
+    Schedule("test-name", "test-id", []() { std::cout << "Test lambda called and running!\n"; return true; })
   {}
   
   auto getPrefs() {
