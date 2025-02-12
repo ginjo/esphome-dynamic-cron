@@ -95,6 +95,7 @@ protected:
   String        crontab_default;
   bool          bypass_default;
   bool          ignore_missed_default;
+  std::string   bad_cron_expr;
   
   // Lamba for call to target action.
   // Can also receive basic function pointer.
@@ -204,7 +205,12 @@ public:
     if (cronnext == 0) {
       //std::string str(_default);
       //return str;
-      return _default;
+      if (bad_cron_expr != "" && bypass == 0) {
+        return bad_cron_expr;
+      }
+      else {
+        return _default;
+      }
     }
     else {
       return timeToString(cronnext);
@@ -611,10 +617,25 @@ protected:
       }
       catch (cron::bad_cronexpr const &ex) {
         LOGE(LOGTAG, "Not a valid cron expression '%s' %s", item.c_str(), ex.what());
-        //start_times.push_back(std::time_t(0));
+        
+        std::string msg;
+        if ((std::string)ex.what() == "stoul") {
+          msg = "not a valid cron expression";
+        }
+        else {
+          msg = ex.what();
+        }
+        
+        bad_cron_expr = "'";
+        bad_cron_expr += item;
+        bad_cron_expr += "' ";
+        bad_cron_expr += msg;
+        
         return {std::time_t(0)};
       }
     }
+    
+    bad_cron_expr = "";
 
     // Sorts (in-place) vector of start_times values from soonest to furthest.
     std::sort(start_times.begin(), start_times.end(), [_ref_time](std::time_t& a, std::time_t& b)
