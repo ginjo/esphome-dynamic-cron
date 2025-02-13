@@ -44,8 +44,17 @@ class CronNextSensor;
 
 
 class Schedule : public Component, public ScheduleCore {
+
+protected:
+  // If true, clears prefs at first boot after flash.
+  bool                clear_prefs;
+  
+  std::time_t         cron_loop_previous_time;
+  std::time_t         save_prefs_previous_time;
     
 public:
+  double              cron_loop_interval; // seconds
+  double              save_prefs_interval; // seconds
   
   // These are just to hold pointers to the subcomponents.
   // They aren't currently used or necessary, but may be nice to have in future.
@@ -55,6 +64,27 @@ public:
   CronNextSensor      *cron_next_sensor;
   
   
+  // Custom constructor method to create Schedule object.
+  // NOTE: The function-pointer argument must have NO captures, if it's receiving a lambda.
+  // Otherwise, the lambda won't be converted to a simple function/pointer.
+  // So, if you pass in a lambda, the [] must be empty.
+  //
+  Schedule( // schedule-name, schedule-id, target-action-lambda-or-function-pointer
+    std::string _name,
+    std::string _id,
+    bool(*_target_action_fptr)()
+  ) :
+    ScheduleCore(_name, _id, _target_action_fptr),
+    cron_loop_interval(5),
+    save_prefs_interval(60),
+    clear_prefs(false)
+  {
+    LOGD(LOGTAG, "Initializing Schedule '%s' %s", _name.c_str(), _id.c_str());
+    cron_loop_previous_time = std::time(NULL);
+    save_prefs_previous_time = std::time(NULL);
+  } // end Schedule(...).
+
+
   // Esphome Component overrides
   void setup() override {
     if (timeIsValid() && !setup_complete) {
@@ -69,23 +99,29 @@ public:
     }
   }
   
+  
   void loop() override {
     std::time_t now = std::time(NULL);
-    double seconds = difftime(now, previous);
-    
-    if (seconds > loop_interval) {
-    
-      if (setup_complete) {
-        //LOGD(LOGTAG, "Looping: %lu", now);
+    double seconds_since_last_cron_loop = difftime(now, cron_loop_previous_time);
+    double seconds_since_last_save      = difftime(now, save_prefs_previous_time);
+  
+    if (setup_complete) {
+      //LOGD(LOGTAG, "Looping: %lu", now);
+      if (seconds_since_last_cron_loop > cron_loop_interval) {
         cronLoop();
-      }
-      else {
-        setup();
+        cron_loop_previous_time = std::time(NULL);
       }
       
-      previous = std::time(NULL);
+      if (seconds_since_last_save > save_prefs_interval) {
+        savePrefs();
+        save_prefs_previous_time = std::time(NULL);
+      }
+    }
+    else {
+      setup();
     }
   }
+  
   
   void dump_config() override {
     // This method will trigger once for each scheduled loaded by esphome,
@@ -94,23 +130,6 @@ public:
     //ESP_LOGCONFIG(LOGTAG, "Dynamic Cron Schedule");
     //LOGD(LOGTAG, "Dynamic Cron Schedule %s", schedule_name.c_str());
   }
-  
-  
-  // Custom constructor method to create Schedule object.
-  // NOTE: The function-pointer argument must have NO captures, if it's receiving a lambda.
-  // Otherwise, the lambda won't be converted to a simple function/pointer.
-  // So, if you pass in a lambda, the [] must be empty.
-  //
-  Schedule( // schedule-name, schedule-id, target-action-lambda-or-function-pointer
-    std::string _name,
-    std::string _id,
-    bool(*_target_action_fptr)()
-  ) :
-    ScheduleCore(_name, _id, _target_action_fptr),
-    clear_prefs(false)
-  {
-    LOGD(LOGTAG, "Initializing Schedule '%s' %s", _name.c_str(), _id.c_str());
-  } // end Schedule(...).
 
 
   void setClearPrefs(bool val) {
@@ -119,10 +138,6 @@ public:
   
   
 protected:
-  
-  // If true, clears prefs at first boot after flash.
-  bool clear_prefs;
-  
   
   // The SchedulePrefs class instance should:
   //   * Initialize prefs for this schedule.

@@ -16,6 +16,10 @@
 //
 // TODO: Push crontab failure messages to the cronnext-string field in the browser.
 //
+// TODO: Consider moving the looping methods and vars to the ...esphome.h file.
+//       Or consider moving those from the ...esphome.h file into this file.
+//       Or maybe just move the savePrefs() method to the ...esphome.h file (called from the loop() method).
+//
 //
 // Maybe see here for polymorphic members vars:
 // https://stackoverflow.com/questions/17035951/member-variable-polymorphism-argument-by-reference
@@ -90,7 +94,7 @@ protected:
   bool          bypass;
   bool          ignore_missed;
   std::string   id_hash;
-  std::time_t   previous;
+  // std::time_t   previous; // TODO: Move to ...esphome.h
   bool          setup_complete;
   String        crontab_default;
   bool          bypass_default;
@@ -100,32 +104,15 @@ protected:
   // Lamba for call to target action.
   // Can also receive basic function pointer.
   // Can NOT take lambda captures.
-  // See the Schedule constructor (in dynamic_cron.h).
+  // See the Schedule constructor (in dynamic_cron_esphome.h).
   bool(*target_action_fptr)();
   
   
 public:
     
-  double loop_interval; // seconds
-  
-  // // We created our own LOGx functions, since we need to access them independently
-  // // from esphome (especially during test runs).
-  // template<typename... Args>
-  // static void LOGD(const char *tag, const char *fmt, Args... args) {
-  //     printf("[D][%s]: ", tag);
-  //     printf(fmt, args...);
-  //     printf("\n");
-  //     //(std::cout << ... << args) << std::endl;
-  // }
-  // //
-  // template<typename... Args>
-  // static void LOGE(const char *tag, const char *fmt, Args... args) {
-  //     printf("[E][%s]: ", tag);
-  //     printf(fmt, args...);
-  //     printf("\n");
-  //     //(std::cout << ... << args) << std::endl;
-  // }
-  // 
+  // TODO: I think loop_interval should be moved to the ...esphome.h file.
+  // It is not used in this file.
+  // double loop_interval; // seconds
   
   // Custom constructor method to create ScheduleCore object.
   // NOTE: The function-pointer argument must have NO captures, if it's receiving a lambda.
@@ -147,13 +134,13 @@ public:
     ignore_missed(false),
     ignore_missed_default(false),
     target_action_fptr(_target_action_fptr),
-    loop_interval(5),
+    //loop_interval(15),
     id_hash(""),
     setup_complete(false)
   {
     //LOGD(LOGTAG, "Initializing ScheduleCore object '%s' %s", _name.c_str(), _id.c_str());
     id_hash = GetHash(schedule_id);
-    previous = std::time(NULL);
+    // previous = std::time(NULL);
     AddToSchedules(this);
   } // end ScheduleCore(...).
 
@@ -491,7 +478,7 @@ protected:
   
 
   // Calls cronLoop() method of all Schedules().
-  // Deprecated. Now we use esphome loop() method that's part of every Component instance.
+  // Deprecated. Now we call cronLoop() from esphome loop() method that's part of every Component instance.
   static void CronLooper() {
     //LOGD(LOGTAG, "CronLooper() called");
     for (auto s : Schedules()) {
@@ -501,7 +488,7 @@ protected:
 
 
   // Compares cronnext with current time and calls lambda.
-  // Calls savePrefs().
+  // Calls savePrefs(). Update: savePrefs() no longer called here. See ...esphome.h
   void cronLoop() {
     if (timeIsValid() && cronNextExpired()) {
       LOGD(LOGTAG, "Calling lambda for schedule '%s'", schedule_name.c_str());
@@ -523,7 +510,8 @@ protected:
     // else if (timeIsValid() && !bypass && ignore_missed && cronnext == 0) {
     //   setCronNext();
     // }
-    savePrefs();
+    // TODO: Consider moving savePrefs() to the ...esphome.h file.
+    //savePrefs();
   }
 
 
