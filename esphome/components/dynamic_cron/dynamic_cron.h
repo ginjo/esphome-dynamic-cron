@@ -46,10 +46,10 @@ static const char *LOGTAG = "dynamic_cron";
 
 // This is the timestamp of the firmware build.
 // This will be set in python and is seconds from epoch.
-int TIMESTAMP;
+std::time_t TIMESTAMP;
 
 
-class MyLogger {
+class LoggerLocal {
 public:
   // We created our own LOGx functions, since we need to access them independently
   // from esphome (especially during test runs).
@@ -79,7 +79,8 @@ class Schedule;
 
 
 // Core definition of the schedule object.
-class ScheduleCore : public MyLogger {
+//class ScheduleCore : public LoggerLocal {
+class ScheduleCore {
   
   // We don't appear to need this... yet.
   // friend class ScheduleMock;
@@ -113,6 +114,17 @@ public:
   // TODO: I think loop_interval should be moved to the ...esphome.h file.
   // It is not used in this file.
   // double loop_interval; // seconds
+  
+  // These instance-specific loggers call up to the static methods of the LoggerLocal class.
+  template<typename... Args>
+	void LOGD(std::string tag, const char *fmt, Args... args) {
+	    LoggerLocal::LOGD((tag + " " + schedule_name).c_str(), fmt, args...);
+	}
+	
+	template<typename... Args>
+	void LOGE(std::string tag, const char *fmt, Args... args) {
+	    LoggerLocal::LOGE((tag + " " + schedule_name).c_str(), fmt, args...);
+	}
   
   // Custom constructor method to create ScheduleCore object.
   // NOTE: The function-pointer argument must have NO captures, if it's receiving a lambda.
@@ -273,7 +285,7 @@ public:
       else {
         cronnext = cronNextCalc();
         
-        // LOGD(LOGTAG, "setCronNext() '%s' to [%lu, %s]",
+        // LOGD(LOGTAG, "setCronNext() '%s' to [%li, %s]",
         //   schedule_name.c_str(),
         //   //schedule_id.c_str(),
         //   cronnext,
@@ -281,17 +293,22 @@ public:
         // );
       }
       
-      LOGD(LOGTAG, "setCronNext() '%s' to [%lu, %s], while crontab: %s, bypass: %d",
-                schedule_name.c_str(),
-                cronnext,
-                timeToString(cronnext).c_str(),
-                crontab.c_str(),
-                bypass
+      LOGD(LOGTAG, "Set cronnext '%s' [%li, %s, %s, bypass: %d, now: %li]",
+                    schedule_name.c_str(),
+                    cronnext,
+                    timeToString(cronnext).c_str(),
+                    crontab.c_str(),
+                    bypass,
+                    timeNow()
       );
     }
     
     else {
-      LOGD(LOGTAG, "setCronNext() '%s', timeIsValid(): FALSE");
+      LOGD(LOGTAG, "Set cronnext '%s' failed, crontab: %s, bypass: %d",
+                    schedule_name.c_str(),
+                    crontab.c_str(),
+                    bypass
+      );
     }
   }
 
@@ -317,10 +334,10 @@ public:
       // we need to make sure to clear out the manuall cronnext after it's used,
       // otherwise it'll trigger with every loop.
     ){
-      //LOGD(LOGTAG, "Setting cronnext from input '%s' %lu", timeToString(input).c_str(), input);
+      //LOGD(LOGTAG, "Setting cronnext from input '%s' %li", timeToString(input).c_str(), input);
       cronnext = input;
       
-      LOGD(LOGTAG, "Setting cronnext with input for '%s' %s [%lu, %s]",
+      LOGD(LOGTAG, "Setting cronnext with input for '%s' %s [%li, %s]",
         schedule_name.c_str(),
         schedule_id.c_str(),
         input,
@@ -328,9 +345,7 @@ public:
       );
     }
     else {
-      LOGD(LOGTAG, "setCronNext() skipping due to invalid input or current time '%s' %s [%lu, %s]",
-        schedule_name.c_str(),
-        schedule_id.c_str(),
+      LOGE(LOGTAG, "setCronNext(user-input) invalid input or current-time [%li, %s]",
         input,
         timeToString(input).c_str()
       );
@@ -350,7 +365,7 @@ public:
 
   // Sets crontab with given string.
   std::string setCrontab(std::string str) {
-    LOGD(LOGTAG, "Setting crontab for '%s' %s [%s]", schedule_name.c_str(), schedule_id.c_str(), str.c_str());
+    LOGD(LOGTAG, "Set crontab '%s' [%s]", schedule_name.c_str(), str.c_str());
     crontab = str;
     setCronNext();
     return crontab;
@@ -451,7 +466,7 @@ public:
     time_t t_time = mktime(&tm_struct);
   
     // Log the time_t value
-    //LOGD(LOGTAG, "stringToTime() parsed time '%s' in seconds since epoch: %lu", input.c_str(), t_time);
+    //LOGD(LOGTAG, "stringToTime() parsed time '%s' in seconds since epoch: %li", input.c_str(), t_time);
     // Log the reverse operation.
     //LOGD(LOGTAG, "stringToTime() reverse operation: %s", timeToString(t_time).c_str());
   
@@ -464,9 +479,10 @@ protected:
   // This is a mock function for testing.
   // This is needed here so this file can compile independantly of ../dynamic_cron_esphome.h.
   // This expects to be overridden in the dynamic_cron_esphome.h file.
-  virtual void savePrefs() {
-    // nothing happening here, nothing to see...
-  }
+  // Update: This file no longer calls savePrefs(), was moved to ...esphome.h.
+  // virtual void savePrefs() {
+  //   // nothing happening here, nothing to see...
+  // }
 
 
   // Adds a schedule object to a globally accessible vector array 'all_schedules'.
@@ -552,7 +568,7 @@ protected:
   // since it is in seconds-since-epoch.
   //
   bool timeIsValid(std::time_t now = std::time(NULL)) {
-    //LOGD(LOGTAG, "About to calculate within timeIsValid()", "");
+    //LOGD(LOGTAG, "timeIsValid() now: %li, TIMESTAMP: %li", now, TIMESTAMP);
     
     // We previously tested against esptime.
     //return id(esptime).now().is_valid();
@@ -565,11 +581,11 @@ protected:
     //LOGD(LOGTAG, "now_tm.tm_year: %i", now_tm.tm_year);
     
     // Valid if year is >= 1969 (1970 is the start of 'epoch' time).
-    bool rslt = ((now_tm.tm_year + 1900) > 2019);
+    bool rslt = (now > 0 && (now_tm.tm_year + 1900) > 2019 && std::difftime(now, TIMESTAMP) >= 0 );
     
-    //if (! rslt) {
-    //  LOGE(LOGTAG, "timeIsValid() failed with '%s'", timeToString(now).c_str());
-    //};
+    if (! rslt) {
+     LOGE(LOGTAG, "timeIsValid() FALSE with [%li, %s]", now, timeToString(now).c_str());
+    };
     
     return rslt;
   }
@@ -619,7 +635,7 @@ protected:
         bad_cron_expr += "' ";
         bad_cron_expr += msg;
         
-        return {std::time_t(0)};
+        return {(std::time_t)0};
       }
     }
     

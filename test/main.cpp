@@ -101,11 +101,11 @@ namespace dynamic_cron {
   // Sets system clock to a specific time, given seconds-since-epoch.
   // Search google for 'c++ settimeofday()' and AI will show you about this.
   //
-  int setSystemTime(int seconds = 1600000000) { // 2020-09-13 12:26:40
+  int setSystemTime(std::time_t seconds = 1600000000) { // 2020-09-13 12:26:40
     struct timeval tv;
     tv.tv_sec = seconds; // Set a specific time (seconds since Epoch)
     tv.tv_usec = 0;
-    std::cout << "Setting system time: " << ScheduleMockInst->timeToString((std::time_t)seconds).c_str() << "\n";
+    std::cout << "Setting system time: " << ScheduleMockInst->timeToString(seconds).c_str() << "\n";
     return settimeofday(&tv, NULL);
   }
 
@@ -114,7 +114,7 @@ namespace dynamic_cron {
     std::cout << "System time: " << ScheduleMockInst->timeToString(now).c_str() << "\n";
   }
 
-  void setFirmwareTimestamp(int val = TIMESTAMP_MOCK) {
+  void setFirmwareTimestamp(std::time_t val = TIMESTAMP_MOCK) {
     std::cout << "Current firmware TIMESTAMP is " << std::to_string(TIMESTAMP) << "\n";
   
     TIMESTAMP = val; //TIMESTAMP_MOCK;

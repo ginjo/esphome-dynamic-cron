@@ -105,8 +105,8 @@ public:
     double seconds_since_last_cron_loop = difftime(now, cron_loop_previous_time);
     double seconds_since_last_save      = difftime(now, save_prefs_previous_time);
   
-    if (setup_complete) {
-      //LOGD(LOGTAG, "Looping: %lu", now);
+    if (setup_complete && timeIsValid()) {
+      //LOGD(LOGTAG, "Looping: %li", now);
       if (seconds_since_last_cron_loop > cron_loop_interval) {
         cronLoop();
         cron_loop_previous_time = std::time(NULL);
@@ -156,12 +156,12 @@ protected:
   //
   // For linux epoch converter see: https://www.epochconverter.com/
   //
-  struct SchedulePrefs {
+  struct SchedulePrefs : public LoggerLocal {
   public:
     Preferences   api;
     Schedule*     schedule;
     
-    int           initialized;  // TIMESTAMP of firmware in seconds-since-epoch at compile time (from __init__.py).
+    std::time_t   initialized;  // TIMESTAMP of firmware in seconds-since-epoch at compile time (from __init__.py).
     std::string   crontab;
     bool          ignore_missed;
     bool          bypass;
@@ -185,20 +185,23 @@ protected:
       api.begin(schedule->id_hash.c_str(), false); // open prefs read-write
       
       if (TIMESTAMP == 0) {
-        LOGE(LOGTAG, "Firmware TIMESTAMP == 0 and could prevent proper management of schedule preferences between firmware flashes");
+        LOGE(
+          LOGTAG, "Firmware TIMESTAMP == 0 and could prevent proper management of schedule preferences between firmware flashes",
+          NULL
+        );
       }
       
       // Initializes namespace timestamp, if not already done.
       
       if (! api.isKey("initialized")) {
-        LOGD(LOGTAG, "Initializing prefs namespace '%s' %s with stamp '%i'",
+        LOGD(LOGTAG, "Initializing prefs namespace '%s' %s with stamp '%li'",
           schedule->schedule_name.c_str(),
           schedule->id_hash.c_str(),
           TIMESTAMP
         );
         
         // Sets the 'initialized' preference field to TIMESTAMP (seconds, from __init__.py).
-        api.putInt("initialized", TIMESTAMP);
+        api.putLong("initialized", TIMESTAMP);
         
         size_t number_free_entries = api.freeEntries();
         LOGD(LOGTAG, "There are %u free entries available in the namespace table '%s' %s",
@@ -209,7 +212,7 @@ protected:
       }
       
       // Retrieves the preference 'initialized' field.
-      initialized = api.getInt("initialized", 0);
+      initialized = api.getLong("initialized", 0);
 
       // Clears preferences namespace, if conditions allow.
       //
@@ -217,9 +220,9 @@ protected:
       //
       bool rslt = false;
       if (force == true || schedule->clear_prefs == true && TIMESTAMP != 0 && initialized != TIMESTAMP) {
-        rslt = api.clear(); // && api.putInt("initialized", TIMESTAMP);
+        rslt = api.clear(); // && api.putLong("initialized", TIMESTAMP);
         if (rslt) {
-          LOGD(LOGTAG, "Re-initialized prefs namespace '%s' %s with stamp '%i'",
+          LOGD(LOGTAG, "Re-initialized prefs namespace '%s' %s with stamp '%li'",
             schedule->schedule_name.c_str(),
             schedule->id_hash.c_str(),
             TIMESTAMP
@@ -229,10 +232,10 @@ protected:
       
       // Updates 'initialized' if different from TIMESTAMP.
       if (TIMESTAMP != 0 && initialized != TIMESTAMP) {
-        api.putInt("initialized", TIMESTAMP);
-        initialized = api.getInt("initialized", 0);
+        api.putLong("initialized", TIMESTAMP);
+        initialized = api.getLong("initialized", 0);
         
-        LOGD(LOGTAG, "Updated prefs namespace '%s' %s with stamp '%i'",
+        LOGD(LOGTAG, "Updated prefs namespace '%s' %s with stamp '%li'",
           schedule->schedule_name.c_str(),
           schedule->id_hash.c_str(),
           initialized
@@ -254,7 +257,7 @@ protected:
       }
       
       if (! api.isKey("cronnext")) {
-        api.putULong64("cronnext", 0);
+        api.putLong("cronnext", 0);
       }
 
       api.end();
@@ -275,7 +278,7 @@ protected:
       bypass = api.getBool("bypass", schedule->bypass_default);
 
       //LOGD(LOGTAG, "Loading cronnext from prefs '%s'", schedule->schedule_name.c_str());
-      cronnext = (std::time_t) api.getULong64("cronnext", 0);
+      cronnext = (std::time_t) api.getLong("cronnext", 0);
 
       api.end();
     }
@@ -300,7 +303,7 @@ protected:
     LOGD(LOGTAG, "Schedule '%s' loaded crontab: %s", schedule_name.c_str(), crontab.c_str());
     LOGD(LOGTAG, "Schedule '%s' loaded ignore_missed: %d", schedule_name.c_str(), ignore_missed);
     if (!ignore_missed) {
-      LOGD(LOGTAG, "Schedule '%s' loaded cronnext: %lu (%s)", schedule_name.c_str(), cronnext, timeToString(cronnext).c_str());
+      LOGD(LOGTAG, "Schedule '%s' loaded cronnext: %li (%s)", schedule_name.c_str(), cronnext, timeToString(cronnext).c_str());
     }
     LOGD(LOGTAG, "Schedule '%s' loaded bypass: %d", schedule_name.c_str(), bypass);
     
@@ -310,7 +313,7 @@ protected:
   
   
   // Saves persistent data to esp32 NVS.
-  void savePrefs() override {
+  void savePrefs() {
     SchedulePrefs prefs = SchedulePrefs(this);
     
     bool crontab_changed = (crontab != prefs.crontab);
@@ -337,12 +340,12 @@ protected:
       }
 
       if (cronnext_changed) {
-        LOGD(LOGTAG, "Saving cronnext to prefs '%s' (%lu)", schedule_name.c_str(), cronnext);
-        api.putULong64("cronnext", cronnext);
+        LOGD(LOGTAG, "Saving cronnext to prefs '%s' (%li)", schedule_name.c_str(), cronnext);
+        api.putLong("cronnext", cronnext);
       }
 
       if (bypass_changed) {
-        LOGD(LOGTAG, "Saving bypass to prefs '%s' (%d)", schedule_name.c_str(), bypass);
+        LOGD(LOGTAG, "Saving bypass to prefs '%s' (%i)", schedule_name.c_str(), bypass);
         api.putBool("bypass", bypass);
       }
 
@@ -356,7 +359,7 @@ protected:
 
 // ESPHOME COMPONENTS
 
-class BypassSwitch : public switch_::Switch, public Component, public MyLogger {
+class BypassSwitch : public switch_::Switch, public Component, public LoggerLocal {
 public:
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
   Schedule *schedule;
@@ -399,7 +402,7 @@ public:
 }; // BypassSwitch class
 
 
-class IgnoreMissedSwitch : public switch_::Switch, public Component, public MyLogger {
+class IgnoreMissedSwitch : public switch_::Switch, public Component, public LoggerLocal {
 public:
   
   Schedule *schedule;
@@ -442,7 +445,7 @@ public:
 }; // IgnoreMissedSwitch class
 
 
-class CronNextSensor : public text_sensor::TextSensor, public Component, public MyLogger {
+class CronNextSensor : public text_sensor::TextSensor, public Component, public LoggerLocal {
 public:
   
   Schedule *schedule;
@@ -480,7 +483,7 @@ public:
 }; // CronNextSensor class
 
 
-class CrontabTextField : public text::Text, public Component, public MyLogger {
+class CrontabTextField : public text::Text, public Component, public LoggerLocal {
 public:
   
   Schedule *schedule;
