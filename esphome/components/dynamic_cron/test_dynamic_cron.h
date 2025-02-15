@@ -146,7 +146,7 @@ void test_schedule_cronLoop(void) {
 // RUNNER
 
 int TEST_RUN_COUNT = 0;
-int TEST_RUN_MAX   = 3;
+int TEST_RUN_MAX   = 1;
 
 int DynamicCronTestRunner(void) {
   std::cout << "BEGIN DYNAMIC CRON TESTS\n";
@@ -175,7 +175,9 @@ int DynamicCronTestRunner(void) {
   return UNITY_END();
 }
 
-int RunDynamicCronTests(void) {
+int RunDynamicCronTests(int max = 0) {
+  if (max > 0) { TEST_RUN_MAX = max; }
+
   if (TEST_RUN_COUNT < TEST_RUN_MAX) {
     TEST_RUN_COUNT += 1;
     return DynamicCronTestRunner();
