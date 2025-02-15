@@ -36,6 +36,15 @@ cg.add_library(
     version=None,
 )
 
+cg.add_library(
+    name="Unity",
+    #repository="https://github.com/ThrowTheSwitch/Unity.git",
+    repository=None,
+    version="^2.5.2",
+)
+
+
+
 dynamiccron_ns      = cg.esphome_ns.namespace('dynamic_cron')
 # I don't think the rest of these classes are used in the py code.
 Schedule            = dynamiccron_ns.class_('Schedule', cg.Component)
