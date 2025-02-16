@@ -48,6 +48,20 @@ void test_prefs_updates_timestamp(void) {
   TEST_ASSERT_TRUE(TIMESTAMP == 1600000300);
 }
 
+// Prefs timestamp should match firmware TIMESTAMP
+void test_prefs_matches_timestamp(void) {
+  ScheduleEsphomeMock schedule;
+  auto prefs = schedule.getPrefs();
+  TEST_ASSERT_TRUE(TIMESTAMP == prefs.initialized);
+}
+
+// Prefs timestamp should match firmware TIMESTAMP
+void test_inherited_logger_methods(void) {
+  ScheduleEsphomeMock schedule;
+  schedule.LOGD("Test inherited logger methods");
+  TEST_ASSERT_TRUE(true);
+}
+
 
 } // esphome
 } // dynamic_cron

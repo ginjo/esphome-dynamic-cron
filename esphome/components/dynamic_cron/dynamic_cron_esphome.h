@@ -1,5 +1,3 @@
-
-
 //
 // TODO: Consider saving the prefs object within the Schedule, instead of loading it up every run though the loop.
 //       Then compare Schedule fields against that prefs object, instead of against a new prefs object every time
@@ -70,7 +68,7 @@ public:
     bool(*_target_action_fptr)()
   ) :
     ScheduleCore(_name, _id, _target_action_fptr),
-    cron_loop_interval(5),
+    cron_loop_interval(10),
     save_prefs_interval(60),
     clear_prefs(false)
   {

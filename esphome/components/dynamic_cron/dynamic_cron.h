@@ -1,8 +1,7 @@
 //
-// TODO: Try this with the production Irrigation esphome project.
-//
 // TODO: Consider setting cronnext to 0, whenever ignore_missed is set to true
-//       Update: I think we already do, right?
+//       Update: I think we already do, right? NO, we do not do this yet.
+//       And it functions as intended after power-off or reboot.
 //
 // TODO: Consider an esphome text field for the user to enter a time-formatting expression,
 //       for the display of the cronnext time in the browser.
@@ -405,8 +404,6 @@ public:
   // Sets ignore_missed bool field.
   bool setIgnoreMissed(bool val) {
     ignore_missed = val;
-    // Do we really need this here?
-    //setCronNext();
     return val;
   }
   

@@ -90,6 +90,7 @@ void test_schedule_calculates_cronnext(void) {
   std::string now = ScheduleMockInst->timeToString();
   std::string time_only = ScheduleMockInst->getStringVectorMember(cron_next, " ", 1);
   // Test-message is not supported in the Unity framework provided with platformio.
+  // Update: It now works!! Not sure why.
   //TEST_MESSAGE(now.c_str());
   //TEST_MESSAGE(cron_next.c_str());
   //TEST_MESSAGE(time_only.c_str());
@@ -164,6 +165,8 @@ int DynamicCronTestRunner(void) {
   // Runs these tests in esp environment and esphome build.
   #if !defined(IS_NATIVE) || IS_NATIVE != 1
     RUN_TEST(test_prefs_initialized);
+    RUN_TEST(test_prefs_matches_timestamp);
+    RUN_TEST(test_inherited_logger_methods);
   #endif
   
   // Runs these tests only in esp environment (not esphome build).
