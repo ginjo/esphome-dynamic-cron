@@ -312,7 +312,7 @@ protected:
     
     bool crontab_changed = (crontab != prefs.crontab);
     bool ignore_missed_changed = (ignore_missed != prefs.ignore_missed);
-    bool cronnext_changed = (cronnext != prefs.cronnext && !ignore_missed);
+    bool cronnext_changed = (cronnext != prefs.cronnext && !ignore_missed && !bypass);
     bool bypass_changed = (bypass != prefs.bypass);
 
     // If any changes, then open prefs for writing.
