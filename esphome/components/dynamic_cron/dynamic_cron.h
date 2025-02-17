@@ -1,8 +1,4 @@
 //
-// TODO: Consider setting cronnext to 0, whenever ignore_missed is set to true
-//       Update: I think we already do, right? NO, we do not do this yet.
-//       And it functions as intended after power-off or reboot.
-//
 // TODO: Consider an esphome text field for the user to enter a time-formatting expression,
 //       for the display of the cronnext time in the browser.
 //
@@ -108,7 +104,7 @@ class ScheduleCore : public LoggerLocal {
   friend class LoggerLocal;
   friend class CrontabTextField;
   friend class BypassSwitch;
-  friend class IgnoreMissedSwitch;
+  friend class RememberNextSwitch;
   friend class CronNextSensor;
   
 protected:
@@ -119,13 +115,13 @@ protected:
   std::string   crontab;
   std::time_t   cronnext;
   bool          bypass;
-  bool          ignore_missed;
+  bool          remember_next;
   std::string   id_hash;
   // std::time_t   previous; // TODO: Move to ...esphome.h
   bool          setup_complete;
   String        crontab_default;
   bool          bypass_default;
-  bool          ignore_missed_default;
+  bool          remember_next_default;
   std::string   bad_cron_expr;
   
   // Lamba for call to target action.
@@ -169,8 +165,8 @@ public:
     cronnext(0),
     bypass(false),
     bypass_default(false),
-    ignore_missed(false),
-    ignore_missed_default(false),
+    remember_next(false),
+    remember_next_default(false),
     target_action_fptr(_target_action_fptr),
     //loop_interval(15),
     id_hash(""),
@@ -395,15 +391,15 @@ public:
     return val;
   }
 
-  // Gets ignore_missed bool field.
-  bool getIgnoreMissed() {
-    return ignore_missed;
+  // Gets remember_next bool field.
+  bool getRememberNext() {
+    return remember_next;
   }
 
 
-  // Sets ignore_missed bool field.
-  bool setIgnoreMissed(bool val) {
-    ignore_missed = val;
+  // Sets remember_next bool field.
+  bool setRememberNext(bool val) {
+    remember_next = val;
     return val;
   }
   
@@ -425,8 +421,8 @@ public:
   }
   
   
-  void setIgnoreMissedDefault(bool val) {
-    ignore_missed_default = val;
+  void setRememberNextDefault(bool val) {
+    remember_next_default = val;
   }
   
   
@@ -521,21 +517,6 @@ protected:
         setCronNext();
       }
     }
-    // We try to setCronNext() at pref loading, but timeNow() might not be valid then,
-    // so we try to clean it up here. We don't want to run setCronNext(), unless
-    // absolutely necessary, since we might eventually allow user-input for a one-off.
-    //
-    // If cronnext isn't updating as often as you'd like, check this out:
-    // TODO (done!): What if we disable this? It's running more often than it needs to,
-    // especially when ignore_missed is true.
-    // Update: Initial testing with this commented out... working fine 2024-10-05.
-    // Update: Now calling setCronNext() during setup, if !isValidTime(cronnext).
-    //
-    // else if (timeIsValid() && !bypass && ignore_missed && cronnext == 0) {
-    //   setCronNext();
-    // }
-    // TODO: Consider moving savePrefs() to the ...esphome.h file.
-    //savePrefs();
   }
 
 

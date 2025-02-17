@@ -32,7 +32,7 @@ namespace dynamic_cron {
 //
 class CrontabTextField;
 class BypassSwitch;
-class IgnoreMissedSwitch;
+class RememberNextSwitch;
 class CronNextSensor;
 
 
@@ -53,7 +53,7 @@ public:
   // They aren't currently used or necessary, but may be nice to have in future.
   CrontabTextField    *crontab_text_field;
   BypassSwitch        *bypass_switch;
-  IgnoreMissedSwitch  *ignore_missed_switch;
+  RememberNextSwitch  *remember_next_switch;
   CronNextSensor      *cron_next_sensor;
   
   
@@ -160,7 +160,7 @@ protected:
     
     std::time_t   initialized;  // TIMESTAMP of firmware in seconds-since-epoch at compile time (from __init__.py).
     std::string   crontab;
-    bool          ignore_missed;
+    bool          remember_next;
     bool          bypass;
     std::time_t   cronnext;
     
@@ -242,8 +242,8 @@ protected:
         api.putString("crontab", String(schedule->crontab_default));
       }
       
-      if (! api.isKey("ignore_missed")) {
-        api.putBool("ignore_missed", schedule->ignore_missed_default);
+      if (! api.isKey("remember_next")) {
+        api.putBool("remember_next", schedule->remember_next_default);
       }
       
       if (! api.isKey("bypass")) {
@@ -265,8 +265,8 @@ protected:
       //LOGD("Loading crontab from prefs");
       crontab = api.getString("crontab", schedule->crontab_default).c_str();
 
-      //LOGD("Loading ignore_missed from prefs");
-      ignore_missed = api.getBool("ignore_missed", schedule->ignore_missed_default);
+      //LOGD("Loading remember_next from prefs");
+      remember_next = api.getBool("remember_next", schedule->remember_next_default);
 
       //LOGD("Loading bypass from prefs");
       bypass = api.getBool("bypass", schedule->bypass_default);
@@ -285,20 +285,18 @@ protected:
     SchedulePrefs prefs = SchedulePrefs(this);
     
     crontab = prefs.crontab;
-    ignore_missed = prefs.ignore_missed;
+    remember_next = prefs.remember_next;
     bypass = prefs.bypass;
 
-    if (! ignore_missed) {
+    if (remember_next && !bypass) {
       cronnext = prefs.cronnext;
     } else {
       cronnext = 0;
     }
 
     LOGD("Loaded crontab: %s", crontab.c_str());
-    LOGD("Loaded ignore_missed: %d", ignore_missed);
-    if (!ignore_missed) {
-      LOGD("Loaded cronnext: %li (%s)", cronnext, timeToString(cronnext).c_str());
-    }
+    LOGD("Loaded remember_next: %d", remember_next);
+    LOGD("Loaded cronnext: %li (%s)", cronnext, timeToString(cronnext).c_str());
     LOGD("Loaded bypass: %d", bypass);
     
     return prefs;
@@ -311,12 +309,12 @@ protected:
     SchedulePrefs prefs = SchedulePrefs(this);
     
     bool crontab_changed = (crontab != prefs.crontab);
-    bool ignore_missed_changed = (ignore_missed != prefs.ignore_missed);
-    bool cronnext_changed = (cronnext != prefs.cronnext && !ignore_missed && !bypass);
+    bool remember_next_changed = (remember_next != prefs.remember_next);
+    bool cronnext_changed = (cronnext != prefs.cronnext && remember_next && !bypass);
     bool bypass_changed = (bypass != prefs.bypass);
 
     // If any changes, then open prefs for writing.
-    if (crontab_changed || ignore_missed_changed || cronnext_changed || bypass_changed) {
+    if (crontab_changed || remember_next_changed || cronnext_changed || bypass_changed) {
       
       Preferences api;
 
@@ -328,9 +326,9 @@ protected:
         api.putString("crontab", String(crontab.c_str()));
       }
 
-      if (ignore_missed_changed) {
-        LOGD("Saving ignore_missed to prefs %d", ignore_missed);
-        api.putBool("ignore_missed", ignore_missed);
+      if (remember_next_changed) {
+        LOGD("Saving remember_next to prefs %d", remember_next);
+        api.putBool("remember_next", remember_next);
       }
 
       if (cronnext_changed) {
@@ -398,26 +396,26 @@ public:
 }; // BypassSwitch class
 
 
-class IgnoreMissedSwitch : public switch_::Switch, public Component, public LoggerLocal {
+class RememberNextSwitch : public switch_::Switch, public Component, public LoggerLocal {
 public:
   
   Schedule *schedule;
   bool last_state;
   
-  IgnoreMissedSwitch(Schedule* _schedule) :
+  RememberNextSwitch(Schedule* _schedule) :
     schedule(_schedule),
     last_state(0),
     LoggerLocal(_schedule->schedule_name)
   {
-    //set_name("Ignore Missed");
-    //set_object_id("ignore_missed_switch_");
+    //set_name("Remember Next");
+    //set_object_id("remember_next_switch_");
     set_disabled_by_default(false);
     set_icon("mdi:timer-off-outline");
     set_restore_mode(switch_::SWITCH_RESTORE_DISABLED);
     set_component_source("dynamic_cron");
     App.register_switch(this);
     App.register_component(this);
-    schedule->ignore_missed_switch = this;
+    schedule->remember_next_switch = this;
     //schedule_name = schedule->schedule_name; // schedule_name field is inherited from LoggerLocal.
   }
   
@@ -426,7 +424,7 @@ public:
   }
   
   void loop() override {
-    bool new_state = schedule->getIgnoreMissed();
+    bool new_state = schedule->getRememberNext();
     
     if (new_state != last_state) {
       state = new_state;
@@ -436,11 +434,11 @@ public:
   }
   
   void write_state(bool _state) {
-    LOGD("IgnoreMissedSwitch::write_state(): %d", _state);
-    schedule->setIgnoreMissed(_state);
+    LOGD("RememberNextSwitch::write_state(): %d", _state);
+    schedule->setRememberNext(_state);
   }
   
-}; // IgnoreMissedSwitch class
+}; // RememberNextSwitch class
 
 
 class CronNextSensor : public text_sensor::TextSensor, public Component, public LoggerLocal {

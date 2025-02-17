@@ -16,7 +16,7 @@ MULTI_CONF         = True
 
 # Our own custom config options for default member values:
 CONF_BYPASS        = 'disabled'
-CONF_IGNORE_MISSED = 'ignore_missed'
+CONF_REMEMBER_NEXT = 'remember_next'
 CONF_CRONTAB       = 'crontab'
 CONF_CLEAR_PREFS   = 'clear_prefs'
 
@@ -51,14 +51,14 @@ Schedule            = dynamiccron_ns.class_('Schedule', cg.Component)
 BypassSwitch        = dynamiccron_ns.class_('BypassSwitch', switch.Switch, cg.Component)
 CrontabTextField    = dynamiccron_ns.class_('CrontabTextField', text.Text, cg.Component)
 CronNextSensor      = dynamiccron_ns.class_('CronNextSensor', text_sensor.TextSensor, cg.Component)
-IgnoreMissedSwitch  = dynamiccron_ns.class_('IgnoreMissedSwitch', switch.Switch, cg.Component)
+RememberNextSwitch  = dynamiccron_ns.class_('RememberNextSwitch', switch.Switch, cg.Component)
 
 CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_NAME):                            cv.string,
     cv.GenerateID(CONF_ID):                            cv.declare_id(Schedule),
     cv.Required(CONF_LAMBDA):                          cv.returning_lambda,
     cv.Optional(CONF_BYPASS, default=False):           cv.boolean,
-    cv.Optional(CONF_IGNORE_MISSED, default=False):    cv.boolean,
+    cv.Optional(CONF_REMEMBER_NEXT, default=False):    cv.boolean,
     cv.Optional(CONF_CRONTAB, default=""):             cv.string,
     cv.Optional(CONF_CLEAR_PREFS, default=False):      cv.boolean
 }).extend(cv.COMPONENT_SCHEMA)
@@ -100,7 +100,7 @@ async def to_code(config):
     
     # Sets defaults for user data.
     cg.add(var.setBypassDefault(config[CONF_BYPASS]))
-    cg.add(var.setIgnoreMissedDefault(config[CONF_IGNORE_MISSED]))
+    cg.add(var.setRememberNextDefault(config[CONF_REMEMBER_NEXT]))
     cg.add(var.setCrontabDefault(config[CONF_CRONTAB]))
     cg.add(var.setClearPrefs(config[CONF_CLEAR_PREFS]))
     
@@ -116,12 +116,12 @@ async def to_code(config):
     #cg.add(await bypass_switch.set_object_id("var_bypass_switch"))
     
     
-    ignore_missed_switch = cg.RawStatement(
-      f'esphome::dynamic_cron::IgnoreMissedSwitch *ignore_missed_switch_{id_} = new esphome::dynamic_cron::IgnoreMissedSwitch({id_});\n'
-      f'ignore_missed_switch_{id_}->set_name("{name} ignore missed");\n' +
-      f'ignore_missed_switch_{id_}->set_object_id("ignore_missed_switch_{id_}");\n'
+    remember_next_switch = cg.RawStatement(
+      f'esphome::dynamic_cron::RememberNextSwitch *remember_next_switch_{id_} = new esphome::dynamic_cron::RememberNextSwitch({id_});\n'
+      f'remember_next_switch_{id_}->set_name("{name} remember next");\n' +
+      f'remember_next_switch_{id_}->set_object_id("remember_next_switch_{id_}");\n'
     )
-    cg.add(ignore_missed_switch)
+    cg.add(remember_next_switch)
     
     
     cron_next_sensor = cg.RawStatement(

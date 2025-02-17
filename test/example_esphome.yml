@@ -78,8 +78,8 @@ dynamic_cron:
   - name: Drip
     id: drip_schedule
     crontab: "0 0 1 * * *"
-    ignore_missed: true
-    #clear_prefs: true
+    remember_next: false
+    clear_prefs: false
     lambda: |-
       ESP_LOGD("drip", "Drip schedule lambda running @ %s", drip_schedule->timeToString().c_str());
       return {true};

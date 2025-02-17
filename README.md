@@ -100,9 +100,9 @@
     Sets the default `disabled` status. The current `disabled` status can be
     changed at runtime through the web interface or the API.
     
-  * **ignore_missed**: boolean, *optional* `(false)`
+  * **remember_next**: boolean, *optional* `(false)`
   
-    Sets the default `ignore_missed` status. The current `ignore_missed` status
+    Sets the default `remember_next` status. The current `remember_next` status
     can be changed at runtime through the web interface or the API.
     
   * **clear_prefs**: boolean, *optional* `(false)`
@@ -116,8 +116,8 @@
     
 #### Preferences, Defaults, and Memory
   
-  During normal operation, changes made to the `crontab`, `disable`, and `ignore_missed`
-  controls, will be stored in NVS (non volatile storage). If `ignore_missed` is not
+  During normal operation, changes made to the `crontab`, `disable`, and `remember_next`
+  controls, will be stored in NVS (non volatile storage). If `remember_next` is not
   set to `true`, the next-run time will also be stored. All of these settings will be remembered
   across reboots.
   
@@ -140,9 +140,9 @@
   These entities can be accessed through the ESPHome web server or through the API, including Home Assistant.
   
   * Crontab (text field)
-  * Next-run time (text-sensor)
+  * Next run time (text-sensor)
   * Disable schedule (switch)
-  * Ignore missed (switch)
+  * Remember next run (switch)
   
   ### Cron Expressions (crontab)
   
@@ -165,13 +165,15 @@
   While a schedule is disabled, no next-run time is calculated.
   When this element is turned OFF, the schedule is activated and a new next-run time is calculated.
   
-  ### Ignore Missed
+  ### Remember Next
   
-  If Ignore Missed is turned on, the schedule will not remember the next-run time after a power failure
-  or reboot. At boot up, the next-run time will be calculated from the current point in time.
+  If Remember Next is turned on, the schedule will remember the next run time after a power failure
+  or reboot. Otherwise, at boot up, the next run time will be calculated from the current point in time.
   
-  This setting can be helpful, if you are scheduling frequent triggers, where making up a missed one is not important.
-  This setting will reduce wear on non-volatile-storage from frequent writes of the next-run time.
+  This setting can be helpful, if you are scheduling frequent triggers, where making up a missed run is not important.
+  Leaving this setting as false will reduce wear on NVS (non-volatile-storage) from frequent writes of the next run time.
+  Conversely, if you have a schedule that *must* run once per day, turning this option on will help ensure
+  the schedule runs in the event of a power outage that crosses the next run time.
   
   ### Missed Runs
   
@@ -180,7 +182,7 @@
   
   * The stored next-run is in the past.
   * Disable Schedule is not set to `true`.
-  * Ignore Missed is not set to `true`.
+  * Remember Next is not set to `true`.
   
   ### Multiple Schedules
   
