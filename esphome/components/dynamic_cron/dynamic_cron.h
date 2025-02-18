@@ -125,11 +125,6 @@ protected:
   bool          bypass;
   bool          remember_next;
   std::string   id_hash;
-  // std::time_t   previous; // TODO: Move to ...esphome.h
-  bool          setup_complete;
-  String        crontab_default;
-  bool          bypass_default;
-  bool          remember_next_default;
   std::string   bad_cron_expr;
   std::string   time_format;
   
@@ -138,23 +133,17 @@ protected:
   // Can NOT take lambda captures.
   // See the Schedule constructor (in dynamic_cron_esphome.h).
   bool(*target_action_fptr)();
+  
+  // These default fields are what hold the user input from the yaml config in esphome.
+  // So if user runtime settings get lost or botched, their setup will always revert
+  // to their configured defaults. See the setXxxDefault() methods below.
+  bool          setup_complete;
+  String        crontab_default;
+  bool          bypass_default;
+  bool          remember_next_default;
+  
     
 public:
-  
-  // TODO: I think loop_interval should be moved to the ...esphome.h file.
-  // It is not used in this file.
-  // double loop_interval; // seconds
-  
-  // These instance-specific loggers call up to the static methods of the LoggerLocal class.
-  //   template<typename... Args>
-  // void LOGD(std::string tag, const char *fmt, Args... args) {
-  //     LoggerLocal::LOGD((tag + " " + schedule_name).c_str(), fmt, args...);
-  // }
-  // 
-  // template<typename... Args>
-  // void LOGE(std::string tag, const char *fmt, Args... args) {
-  //     LoggerLocal::LOGE((tag + " " + schedule_name).c_str(), fmt, args...);
-  // }
   
   // Custom constructor method to create ScheduleCore object.
   // NOTE: The function-pointer argument must have NO captures, if it's receiving a lambda.
@@ -185,6 +174,7 @@ public:
     id_hash = GetHash(schedule_id);
     //LOGD("Initializing ScheduleCore object %s %s", _id.c_str(), id_hash.c_str());
     // previous = std::time(NULL);
+    //time_format = TIME_FORMAT;
     AddToSchedules(this);
   } // end ScheduleCore(...).
 
@@ -427,6 +417,12 @@ public:
   }
   
   
+  // These default fields are what hold the user input from the yaml config in esphome.
+  // They are mainly used in get/set preference field operations.
+  //
+  // So if user runtime settings get lost or botched, their setup will always revert
+  // to their configured defaults.
+  
   void setBypassDefault(bool val) {
     bypass_default = val;
   }
@@ -439,6 +435,16 @@ public:
   
   void setCrontabDefault(String val) {
     crontab_default = val;
+  }
+  
+  void setTimeFormatDefault(std::string val = TIME_FORMAT) {
+    // Since we don't currently give the user an API for the time_format field at runtime,
+    // This only needs to set the main time_format field. If we give the user a runtime
+    // time_format input, we'll need to create and use a time_format_default field.
+    // 
+    if (val != "") {
+      time_format = val;
+    }
   }
 
 
@@ -455,7 +461,13 @@ public:
       // Converts time_t to tm (a fancy time object), cuz that's what strftime wants.
       timetm = localtime(&timet);
       char str[24];
-      strftime(str, sizeof(str), TIME_FORMAT.c_str(), timetm);
+      
+      // BUG: THIS CRASHES if you pass 'time_format', but works if you pass 'TIME_FORMAT'.
+      // And it only happens in pio 'native' test run. Actual esp32 tests compiled
+      // with esphome, appear to work just fine when uploaded to devices.
+      //
+      // Anyway, we need to pass 'time_format', so what gives?
+      strftime(str, sizeof(str), time_format.c_str(), timetm);
       //LOGD("From inside timeToString() '%s'", str);
       return (std::string)str;
     }
@@ -491,11 +503,11 @@ public:
   
 protected:
   
+  // NOTE: This file no longer calls savePrefs(), was moved to ...esphome.h.
+  // virtual void savePrefs() {
   // This is a mock function for testing.
   // This is needed here so this file can compile independantly of ../dynamic_cron_esphome.h.
   // This expects to be overridden in the dynamic_cron_esphome.h file.
-  // Update: This file no longer calls savePrefs(), was moved to ...esphome.h.
-  // virtual void savePrefs() {
   //   // nothing happening here, nothing to see...
   // }
 

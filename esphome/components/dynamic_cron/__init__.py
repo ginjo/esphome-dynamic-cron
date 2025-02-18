@@ -19,6 +19,7 @@ CONF_BYPASS        = 'disabled'
 CONF_REMEMBER_NEXT = 'remember_next'
 CONF_CRONTAB       = 'crontab'
 CONF_CLEAR_PREFS   = 'clear_prefs'
+CONF_TIME_FORMAT   = 'time_format'
 
 cg.add_build_flag("-std=gnu++17")
 cg.add_build_flag("-fexceptions")
@@ -61,7 +62,8 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_BYPASS, default=False):           cv.boolean,
     cv.Optional(CONF_REMEMBER_NEXT, default=False):    cv.boolean,
     cv.Optional(CONF_CRONTAB, default=""):             cv.string,
-    cv.Optional(CONF_CLEAR_PREFS, default=False):      cv.boolean
+    cv.Optional(CONF_CLEAR_PREFS, default=False):      cv.boolean,
+    cv.Optional(CONF_TIME_FORMAT, default=""):         cv.string,
 }).extend(cv.COMPONENT_SCHEMA)
 
 
@@ -104,6 +106,7 @@ async def to_code(config):
     cg.add(var.setRememberNextDefault(config[CONF_REMEMBER_NEXT]))
     cg.add(var.setCrontabDefault(config[CONF_CRONTAB]))
     cg.add(var.setClearPrefs(config[CONF_CLEAR_PREFS]))
+    cg.add(var.setTimeFormatDefault(config[CONF_TIME_FORMAT]))
     
     
     bypass_switch = cg.RawStatement(
