@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <time.h>
 #include <ctime>
+#include "version.h"
 
 
 namespace esphome {
@@ -28,6 +29,13 @@ static const char *LOGTAG = "dynamic_cron";
 // This is the timestamp of the firmware build.
 // This will be set in python and is seconds from epoch.
 std::time_t TIMESTAMP;
+
+std::string TIME_FORMAT = "%Y-%m-%d %H:%M:%S";
+
+void printVersion() {
+  printf("[I] dynamic_cron version: %s, firmware build: %i\n", esphome::dynamic_cron::VERSION.c_str(), esphome::dynamic_cron::TIMESTAMP);
+}
+
 
 // Forward declarations.
 class Schedule;
@@ -123,6 +131,7 @@ protected:
   bool          bypass_default;
   bool          remember_next_default;
   std::string   bad_cron_expr;
+  std::string   time_format;
   
   // Lamba for call to target action.
   // Can also receive basic function pointer.
@@ -170,6 +179,7 @@ public:
     target_action_fptr(_target_action_fptr),
     //loop_interval(15),
     id_hash(""),
+    time_format(TIME_FORMAT),
     setup_complete(false)
   {
     id_hash = GetHash(schedule_id);
@@ -302,11 +312,12 @@ public:
         cronnext = cronNextCalc();
       }
       
-      LOGD("Set cronnext [%li, %s, %s, bypass: %d, now: %li]",
+      LOGD("Set cronnext [%li, %s, '%s', bypass: %d, remember: %d, now: %li]",
                     cronnext,
                     timeToString(cronnext).c_str(),
                     crontab.c_str(),
                     bypass,
+                    remember_next,
                     timeNow()
       );
     }
@@ -444,7 +455,7 @@ public:
       // Converts time_t to tm (a fancy time object), cuz that's what strftime wants.
       timetm = localtime(&timet);
       char str[24];
-      strftime(str, sizeof(str), "%Y-%m-%d %H:%M:%S", timetm);
+      strftime(str, sizeof(str), TIME_FORMAT.c_str(), timetm);
       //LOGD("From inside timeToString() '%s'", str);
       return (std::string)str;
     }

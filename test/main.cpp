@@ -111,14 +111,14 @@ namespace dynamic_cron {
 
   void printSystemTime() {
     std::time_t now = std::time(NULL);
-    std::cout << "System time: " << ScheduleMockInst->timeToString(now).c_str() << "\n";
+    std::cout << "[I] System time: " << ScheduleMockInst->timeToString(now).c_str() << "\n";
   }
 
   void setFirmwareTimestamp(std::time_t val = TIMESTAMP_MOCK) {
-    std::cout << "Current firmware TIMESTAMP is " << std::to_string(TIMESTAMP) << "\n";
+    std::cout << "[I] Current firmware TIMESTAMP is " << std::to_string(TIMESTAMP) << "\n";
   
     TIMESTAMP = val; //TIMESTAMP_MOCK;
-    std::cout << "New firmware TIMESTAMP is " << std::to_string(TIMESTAMP) << "\n";
+    std::cout << "[I] New firmware TIMESTAMP is " << std::to_string(TIMESTAMP) << "\n";
   }
 
 
@@ -131,7 +131,8 @@ namespace dynamic_cron {
 // For native dev-platform or for some embedded frameworks
 //int main(void) {
 int main( int argc, char **argv ) {
-  //getSystemTime();
+  esphome::dynamic_cron::printVersion();
+  
   esphome::dynamic_cron::printSystemTime();
   
   #if IS_NATIVE != 1
@@ -145,7 +146,8 @@ int main( int argc, char **argv ) {
 
 // For Arduino framework
 void setup() {  
-  //getSystemTime();
+  esphome::dynamic_cron::printVersion();
+  
   esphome::dynamic_cron::printSystemTime();
   
   #if IS_NATIVE != 1
