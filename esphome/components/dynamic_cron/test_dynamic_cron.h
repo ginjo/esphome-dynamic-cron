@@ -17,7 +17,7 @@ class ScheduleMock : public ScheduleCore {
 public:
     
   ScheduleMock() :
-    ScheduleCore("test-name", "test-id", []() { std::cout << "Test lambda called\n"; return true; })
+    ScheduleCore("test-name", "test-id", []() { SLOGD("dynamic_cron", "Test lambda called"); return true; })
   {}
   
   // Added this destructor to debug mystery exception, didn't help
@@ -87,7 +87,7 @@ void test_schedule_contains_schedules(void) {
 void test_schedule_calculates_cronnext(void) {
   ScheduleMockInst->setCrontab("1 2 3 * * *");
   std::string cron_next = ScheduleMockInst->cronNextString();
-  std::string now = ScheduleMockInst->timeToString();
+  //std::string now = ScheduleMockInst->timeToString(); // What was this for?
   std::string time_only = ScheduleMockInst->getStringVectorMember(cron_next, " ", 1);
   // Test-message is not supported in the Unity framework provided with platformio.
   // Update: It now works!! Not sure why.

@@ -72,8 +72,7 @@ public:
     save_prefs_interval(60),
     clear_prefs(false)
   {
-    //LOGD(LOGTAG, "Initializing Schedule '%s' %s", _name.c_str(), _id.c_str());
-    LOGD("Initializing Schedule %s", _id.c_str());
+    LOGI("Initializing Schedule %s", _id.c_str());
     cron_loop_previous_time = std::time(NULL);
     save_prefs_previous_time = std::time(NULL);
   } // end Schedule(...).
@@ -84,7 +83,7 @@ public:
     if (timeIsValid() && !setup_complete) {
       //initializePrefs();
       loadPrefs();
-      LOGD("Setup completed for %s, with id_hash %s", schedule_id.c_str(), id_hash.c_str());
+      LOGV("Setup completed for %s, with id_hash %s", schedule_id.c_str(), id_hash.c_str());
       if (! timeIsValid(cronnext)) {
         setCronNext();
       }
@@ -100,7 +99,7 @@ public:
     double seconds_since_last_save      = difftime(now, save_prefs_previous_time);
   
     if (setup_complete && timeIsValid()) {
-      //LOGD("Looping: %li", now);
+      //LOGV("Looping: %li", now);
       if (seconds_since_last_cron_loop > cron_loop_interval) {
         cronLoop();
         cron_loop_previous_time = std::time(NULL);
@@ -118,7 +117,7 @@ public:
   
   
   void dump_config() override {
-    // This method will trigger once for each scheduled loaded by esphome,
+    // This method will trigger once for each schedule loaded by esphome,
     // but it does not trigger when running the tests.
     //
     //ESP_LOGCONFIG(LOGTAG, "Dynamic Cron Schedule");
@@ -176,14 +175,12 @@ protected:
     
     // Does this need to return a bool, or can it be void?
     bool initialize(bool force = false) {  // We're not using 'force' yet
-      // LOGD("Opening prefs %s for initialization",
-      //   schedule->id_hash.c_str()
-      // );
+      LOGV("Opening prefs %s for initialization", schedule->id_hash.c_str());
 
       api.begin(schedule->id_hash.c_str(), false); // open prefs read-write
       
       if (TIMESTAMP == 0) {
-        LOGE(
+        LOGW(
           "Firmware TIMESTAMP == 0 and could prevent proper management of schedule preferences between firmware flashes",
           NULL
         );
@@ -192,7 +189,7 @@ protected:
       // Initializes namespace timestamp, if not already done.
       
       if (! api.isKey("initialized")) {
-        LOGD("Initializing prefs namespace %s with stamp '%li'",
+        LOGI("Initializing prefs namespace %s with stamp '%li'",
           schedule->id_hash.c_str(),
           TIMESTAMP
         );
@@ -218,7 +215,7 @@ protected:
       if (force == true || schedule->clear_prefs == true && TIMESTAMP != 0 && initialized != TIMESTAMP) {
         rslt = api.clear(); // && api.putLong("initialized", TIMESTAMP);
         if (rslt) {
-          LOGD("Re-initialized prefs namespace %s with stamp '%li'",
+          LOGI("Re-initialized prefs namespace %s with stamp '%li'",
             schedule->id_hash.c_str(),
             TIMESTAMP
           );
@@ -256,22 +253,24 @@ protected:
 
       api.end();
       return rslt;
-    }
+      
+    } // initialize()
     
     
     void load() {
+      LOGV("Opening prefs %s for reading", schedule->id_hash.c_str());
       api.begin(schedule->id_hash.c_str(), true); // open prefs read-only
       
-      //LOGD("Loading crontab from prefs");
+      LOGV("Loading crontab from prefs");
       crontab = api.getString("crontab", schedule->crontab_default).c_str();
 
-      //LOGD("Loading remember_next from prefs");
+      LOGV("Loading remember_next from prefs");
       remember_next = api.getBool("remember_next", schedule->remember_next_default);
 
-      //LOGD("Loading bypass from prefs");
+      LOGV("Loading bypass from prefs");
       bypass = api.getBool("bypass", schedule->bypass_default);
 
-      //LOGD("Loading cronnext from prefs");
+      LOGV("Loading cronnext from prefs");
       cronnext = (std::time_t) api.getLong("cronnext", 0);
 
       api.end();
@@ -322,22 +321,22 @@ protected:
       api.begin(id_hash.c_str(), false); // open as read/write
 
       if (crontab_changed) {
-        LOGD("Saving crontab to prefs %s", crontab.c_str());
+        LOGI("Saving crontab to prefs %s", crontab.c_str());
         api.putString("crontab", String(crontab.c_str()));
       }
 
       if (remember_next_changed) {
-        LOGD("Saving remember_next to prefs %d", remember_next);
+        LOGI("Saving remember_next to prefs %d", remember_next);
         api.putBool("remember_next", remember_next);
       }
 
       if (cronnext_changed) {
-        LOGD("Saving cronnext to prefs %li", cronnext);
+        LOGI("Saving cronnext to prefs %li", cronnext);
         api.putLong("cronnext", cronnext);
       }
 
       if (bypass_changed) {
-        LOGD("Saving bypass to prefs %i", bypass);
+        LOGI("Saving bypass to prefs %i", bypass);
         api.putBool("bypass", bypass);
       }
 
@@ -375,7 +374,7 @@ public:
   }
   
   void setup() {
-    //ESP_LOGD(LOGTAG, "get_object_id(): %s", get_object_id().c_str());
+    LOGV("get_object_id(): %s", get_object_id().c_str());
   }
   
   void loop() override {
@@ -420,7 +419,7 @@ public:
   }
   
   void setup() {
-    //ESP_LOGD(LOGTAG, "get_object_id(): %s", get_object_id().c_str());
+    LOGV("get_object_id(): %s", get_object_id().c_str());
   }
   
   void loop() override {
@@ -464,7 +463,7 @@ public:
   }
   
   void setup() {
-    //ESP_LOGD(LOGTAG, "get_object_id(): %s", get_object_id().c_str());
+    LOGV("get_object_id(): %s", get_object_id().c_str());
   }
   
   void loop() override {
@@ -507,7 +506,7 @@ public:
   }
   
   void setup() {
-    //ESP_LOGD(LOGTAG, "get_object_id(): %s", get_object_id().c_str());
+    LOGV("get_object_id(): %s", get_object_id().c_str());
   }
   
   void loop() override {
@@ -521,7 +520,7 @@ public:
   }
   
   void control(const std::string &_state) {
-    //ESP_LOGD(LOGTAG, "CrontabTextField::control(): %d", &_state);
+    LOGV("CrontabTextField::control(): %d", &_state);
     schedule->setCrontab(_state);
   }
   
