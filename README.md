@@ -15,7 +15,7 @@
   Here is an example web GUI of a generic ESPHome project that defines two
   dynamic_cron schedules.
 
-  ![Screenshot of dynamic_cron interface in ESPHome](img/DynamicCron.png)
+  ![Screenshot of dynamic_cron interface in ESPHome](img/dynamic_cron_ui.png)
 
 ## Requirements
 
