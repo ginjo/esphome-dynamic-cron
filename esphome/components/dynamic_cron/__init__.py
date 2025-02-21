@@ -49,6 +49,8 @@ cg.add_library(
 
 dynamiccron_ns      = cg.esphome_ns.namespace('dynamic_cron')
 # I don't think the rest of these classes are used in the py code.
+# Update: I think these can be used to inject code that instantiates these classes.
+#         See the esphome 'time' component for examples.
 Schedule            = dynamiccron_ns.class_('Schedule', cg.Component)
 BypassSwitch        = dynamiccron_ns.class_('BypassSwitch', switch.Switch, cg.Component)
 CrontabTextField    = dynamiccron_ns.class_('CrontabTextField', text.Text, cg.Component)
