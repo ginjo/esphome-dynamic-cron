@@ -25,6 +25,8 @@
 namespace esphome {
 namespace dynamic_cron {
 
+// class Schedule;
+// class SchedulePrefs;
 
 // This is the timestamp of the firmware build.
 // This will be set in python and is seconds from epoch.
@@ -33,21 +35,26 @@ std::time_t TIMESTAMP;
 std::string TIME_FORMAT = "%Y-%m-%d %H:%M:%S";
 
 void printVersion() {
-  LoggerLocal::SLOGI("dynamic_cron", "version: %s, firmware build: %li", VERSION.c_str(), TIMESTAMP);
+  LoggerLocal<void>::SLOGI("dynamic_cron", "version: %s, firmware build: %li", VERSION.c_str(), TIMESTAMP);
 }
 
 
 // Core definition of the schedule object.
-class ScheduleCore : public LoggerLocal {
-//class ScheduleCore {
+class ScheduleCore : public LoggerLocal<ScheduleCore> {
   
   // Friends can access our protected and private members.
   // These are friends so they can access the schedule_name variable.
+  //
+  // Inheritance gives us access to LoggerLocal, and
+  // friend-class gives LoggerLocal access to this class.
   friend class LoggerLocal;
-  friend class CrontabTextField;
-  friend class BypassSwitch;
-  friend class RememberNextSwitch;
-  friend class CronNextSensor;
+  friend class ScheduleMock;
+  friend class ScheduleEsphomeMock;
+  
+  // friend class CrontabTextField;
+  // friend class BypassSwitch;
+  // friend class RememberNextSwitch;
+  // friend class CronNextSensor;
   
 protected:
   
@@ -66,6 +73,14 @@ protected:
   // Can also receive basic function pointer.
   // Can NOT take lambda captures.
   // See the Schedule constructor (in dynamic_cron_esphome.h).
+  //
+  // Update: I don't think there's any way to pass just a function pointer
+  // to esphome through the yaml config lambda fields, so restricting
+  // this to not accept captures adds no benefit to esphome users.
+  // (even if it's helpful in the isolated context of this class alone).
+  // Maybe we can overload the constructor to handle lambdas with/without captures,
+  // and then make the lambda-build in python pass in the captures '[=]'.
+  // See here for discussion of captures in esphome: https://github.com/esphome/issues/issues/249
   bool(*target_action_fptr)();
   
   // These default fields are what hold the user input from the yaml config in esphome.
@@ -79,6 +94,9 @@ protected:
     
 public:
   
+  // self reference, allows LoggerLocal to reference schedule members.
+  ScheduleCore* schedule;
+  
   // Custom constructor method to create ScheduleCore object.
   // NOTE: The function-pointer argument must have NO captures, if it's receiving a lambda.
   // Otherwise, the lambda won't be converted to a simple function/pointer.
@@ -89,7 +107,7 @@ public:
     std::string _id,
     bool(*_target_action_fptr)()
   ) :
-    LoggerLocal(_name),
+    schedule(this),
     schedule_name(_name),
     schedule_id(_id),
     crontab(""),
@@ -103,12 +121,13 @@ public:
     //loop_interval(15),
     id_hash(""),
     time_format(TIME_FORMAT),
+    //LoggerLocal<ScheduleCore>(_name),
     setup_complete(false)
   {
     id_hash = GetHash(schedule_id);
     LOGV("Initializing ScheduleCore object %s %s", _id.c_str(), id_hash.c_str());
     
-    // These all work! ... but not from timeToString() method !
+    // These all work! ... but not from timeToString() method. Update: that may have been fixed?
     LOGV("time_format: %s", getTimeFormat());
     LOGV("TIME_FORMAT: %s", TIME_FORMAT.c_str());
     LOGV("EQUAL? %d", (TIME_FORMAT == time_format));
@@ -117,8 +136,8 @@ public:
     AddToSchedules(this);
     
   } // end ScheduleCore(...).
-
-
+  
+  
   // Globally accessible wrapper for access to all_schedules static var.
   // Are we still using this? YES
   static std::vector<ScheduleCore*>& Schedules() {
@@ -152,6 +171,15 @@ public:
       }
     }
     return nullptr;
+  }
+  
+  
+  std::string getName() {
+    return schedule_name;
+  }
+  
+  std::string getId() {
+    return schedule_id;
   }
  
 
@@ -232,6 +260,8 @@ public:
 
   // Sets cronnext time_t from crontab field.
   // TODO: Allow a user-entered value to be passed. See below for prototype (works in tests).
+  // TODO: This is still being called too early in boot/setup phase, way before time has been synced.
+  //
   void setCronNext() {
     if (timeIsValid()) {  // If system time is not valid, skip all of this.
       LOGV("setCronNext() --> timeIsValid(): TRUE");
@@ -452,15 +482,6 @@ public:
   
   
 protected:
-  
-  // NOTE: This file no longer calls savePrefs(), was moved to ...esphome.h.
-  // virtual void savePrefs() {
-  // This is a mock function for testing.
-  // This is needed here so this file can compile independantly of ../dynamic_cron_esphome.h.
-  // This expects to be overridden in the dynamic_cron_esphome.h file.
-  //   // nothing happening here, nothing to see...
-  // }
-
 
   // Adds a schedule object to a globally accessible vector array 'all_schedules'.
   // Are we still using this?
@@ -488,7 +509,7 @@ protected:
   // Calls savePrefs(). Update: savePrefs() no longer called here. See ...esphome.h
   void cronLoop() {
     if (timeIsValid() && cronNextExpired()) {
-      LOGI("Cron loop calling lambda");
+      LOGI("%s cron schedule calling action(s)", schedule_name.c_str());
       bool result = target_action_fptr();
       if (result) {
         setCronNext();
@@ -530,30 +551,39 @@ protected:
   // Even if it's a valid system time, it must be within a reasonable range,
   // so it can't be 0 (1969, 1970, something like that, depending on locale).
   // We're not actually checking with ESPHome, just with the core c++ time.
-  // TODO: Consider comparing (also) against the dynamic_cron firmware timestamp,
-  // since it is in seconds-since-epoch.
+  // TODO: We might have to check with esphome rtc to see if time is synced/valid,
+  // as nothing else we've tried seems to work reliably. Look into the base Time component.
+  // Hmm... this might only be an issue during the first boot after flashing an update.
+  //
+  // NOTE: All callable log lines in this method could run many
+  //       times per second, if conditions permit. Only enable
+  //       them if necessary for debugging.
   //
   bool timeIsValid(std::time_t now = std::time(NULL)) {
-    LOGV("timeIsValid() now: %li, TIMESTAMP: %li", now, TIMESTAMP);
+    //LOGV("timeIsValid() now: %li, TIMESTAMP: %li", now, TIMESTAMP);
     
-    // We previously tested against esptime.
+    // We previously tested against esptime only.
     //return id(esptime).now().is_valid();
+    // Now we use it in the Schedule::timeIsValid() function (other file).
     
-    //time_t now;
-    //std::time(&now); // same as: now = time(NULL)
-    
+    // Gets time independent of esp functions.
     struct tm now_tm;
     now_tm = *localtime(&now);
-    LOGV("now_tm.tm_year: %i", now_tm.tm_year);
+    //LOGV("now_tm.tm_year: %i", now_tm.tm_year);
     
-    // Valid if year is >= 1969 (1970 is the start of 'epoch' time).
-    bool rslt = (now > 0 && (now_tm.tm_year + 1900) > 2019 && std::difftime(now, TIMESTAMP) >= 0 );
+    // 1970 is the start of 'epoch' time.
+    // tm_year gives us years sine 1900. 
+    bool rslt = (
+      now > 0 &&
+      (now_tm.tm_year + 1900) > 2019 &&
+      std::difftime(now, TIMESTAMP) >= 0
+    );
     
     if (! rslt) {
-     LOGV("timeIsValid() FALSE with [%li, %s]", now, timeToString(now).c_str());
+      LOGV("timeIsValid() FALSE with [%li, %s]", now, timeToString(now).c_str());
     };
     
-    return rslt;
+    return (rslt);
   }
 
 

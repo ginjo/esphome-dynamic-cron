@@ -116,10 +116,10 @@ namespace dynamic_cron {
   }
 
   void setFirmwareTimestamp(std::time_t val = TIMESTAMP_MOCK) {
-    LoggerLocal::SLOGI("dynamic_cron", "Current firmware TIMESTAMP %li", TIMESTAMP);
+    LoggerLocal<void>::SLOGI("dynamic_cron", "Current firmware TIMESTAMP %li", TIMESTAMP);
   
     TIMESTAMP = val; //TIMESTAMP_MOCK;
-    LoggerLocal::SLOGI("dynamic_cron", "New firmware TIMESTAMP %li", TIMESTAMP);
+    LoggerLocal<void>::SLOGI("dynamic_cron", "New firmware TIMESTAMP %li", TIMESTAMP);
   }
 
 

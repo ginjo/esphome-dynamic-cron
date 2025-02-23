@@ -1,5 +1,10 @@
+// LoggerLocal base class to be inherited by other classes.
+//
 // Creates local LOGx functions to work with Schedule class(s).
 // This should work with or without the ESP logger macros.
+//
+// ALL derived classes should define a *schedule variable that points to the
+// schedule instance they are associated with.
 
 
 #pragma once
@@ -16,19 +21,46 @@ namespace dynamic_cron {
 
 const char *LOGTAG = "dynamic_cron";
 
-// Forward declarations.
-class Schedule;
 
-
+template <typename Derived> // So we can access the derived instances from here.
 class LoggerLocal {
+  
+  friend class ScheduleCore;
+  friend class Schedule;
+  friend class SchedulePrefs;
+  
+  friend class ScheduleMock;
+  friend class ScheduleEsphomeMock;
+  
+  // friend class CrontabTextField;
+  // friend class BypassSwitch;
+  // friend class RememberNextSwitch;
+  // friend class CronNextSensor;
+  
 public:
-  std::string schedule_name;
+  //std::string schedule_name;
+  //std::string schedule_id;
   
   LoggerLocal() {}
   
-  LoggerLocal(std::string _name) :
-    schedule_name(_name)
-  {}
+  // LoggerLocal(std::string _name)
+  //   //schedule_name(_name)
+  // {}
+  
+  //virtual LoggerLocal* thisSchedule() = 0;
+  
+  Derived* derived() {
+    return static_cast<Derived*>(this);
+  }
+
+  // template <typename AbsClass>
+  // LoggerLocal(std::string _name, AbsClass* _schedule) :
+  //   schedule_name(_name)
+  // { 
+  //   std::cout << _schedule->schedule_name.c_str(); // fails!
+  //   //std::cout << schedule_name.c_str();  // works!
+  //   //schedule_name = _schedule->schedule_name; // fails!
+  // }
   
   // Wherever you inherit this class, make sure to call the LoggerLocal(_name)
   // constructor.
@@ -49,12 +81,7 @@ public:
   //
   // These methds add boilerplate tags-and-schedule-name from the schedule instance, to the log line.
   //
-  // You must set schedule_name in the inherited class, for these to work.
-  // Example: schedule_name = schedule->schedule_name;
-  //
-  // OR, you must define a pointer *schedule that points to the relevant schedule (or schedule-core) instance.
-  // This pointer method would only work if you had header files for each class (ScheduleCore, LoggerLocal, Schedule, etc.).
-  //
+  // You must define a pointer *schedule that points to the relevant schedule (or schedule-core) instance.
   //
   // These functions are created with a Macro '#define' and each line of the definition
   // MUST be terminated with an escaped literal newline '\<newline>'.
@@ -73,9 +100,12 @@ public:
       template<typename... Args> \
       void LOG##level(const char *fmt, Args... args) { \
         std::string tag = LOGTAG; \
-        SLOG##level((tag + " " + schedule_name).c_str(), fmt, args...); \
+        SLOG##level((tag + "_" + derived()->schedule->getId()).c_str(), fmt, args...); \
       }
-      
+      //
+      // SLOG##level((tag + "_" + derived()->schedule->schedule_id).c_str(), fmt, args...); \
+      //
+      //
   #else
     #define CREATE_LOG_FUNC(level) \
       template<typename... Args> \
@@ -85,7 +115,7 @@ public:
       template<typename... Args> \
       void LOG##level(const char *fmt, Args... args) { \
         std::string tag = LOGTAG; \
-        SLOG##level((tag + " " + schedule_name).c_str(), fmt, args...); \
+        SLOG##level((tag + "_" + derived()->schedule->getId()).c_str(), fmt, args...); \
       }
       
   #endif
@@ -100,15 +130,11 @@ public:
   //CREATE_LOG_FUNC(VV)
 
   
-  // MEMBER METHODS
+  // MEMBER METHODS (original)
   //
   // These methds add boilerplate tags-and-schedule-name from the schedule instance, to the log line.
   //
-  // You must set schedule_name in the inherited class, for these to work.
-  // Example: schedule_name = schedule->schedule_name;
-  //
-  // OR, you must define a pointer *schedule that points to the relevant schedule (or schedule-core) instance.
-  // This pointer method would only work if you had header files for each class (ScheduleCore, LoggerLocal, Schedule, etc.).
+  // You must define a pointer *schedule that points to the relevant schedule (or schedule-core) instance.
   //
   // template<typename... Args>
   // void LOGD(const char *fmt, Args... args) {

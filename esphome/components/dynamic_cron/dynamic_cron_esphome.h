@@ -13,6 +13,7 @@
 
 #include "esphome/core/component.h"
 #include "esphome/core/application.h"
+#include "esphome/core/time.h"
 #include "esphome/components/switch/switch.h"
 #include "esphome/components/text_sensor/text_sensor.h"
 #include "esphome/components/text/text.h"
@@ -37,7 +38,9 @@ class CronNextSensor;
 
 
 class Schedule : public Component, public ScheduleCore {
-
+  friend class LoggerLocal;
+  friend class ScheduleCore;
+  
 protected:
   // If true, clears prefs at first boot after flash.
   bool                clear_prefs;
@@ -72,7 +75,7 @@ public:
     save_prefs_interval(60),
     clear_prefs(false)
   {
-    LOGI("Initializing Schedule %s", _id.c_str());
+    LOGI("Initializing cron schedule '%s' %s", _name.c_str(), _id.c_str());
     cron_loop_previous_time = std::time(NULL);
     save_prefs_previous_time = std::time(NULL);
   } // end Schedule(...).
@@ -83,7 +86,7 @@ public:
     if (timeIsValid() && !setup_complete) {
       //initializePrefs();
       loadPrefs();
-      LOGV("Setup completed for %s, with id_hash %s", schedule_id.c_str(), id_hash.c_str());
+      LOGV("Setup completed for '%s' %s %s", schedule_name.c_str(), schedule_id.c_str(), id_hash.c_str());
       if (! timeIsValid(cronnext)) {
         setCronNext();
       }
@@ -110,6 +113,7 @@ public:
         save_prefs_previous_time = std::time(NULL);
       }
     }
+    
     else {
       setup();
     }
@@ -152,7 +156,19 @@ protected:
   // Note that this SchedulePrefs class/struct is defined within the Schedule class.
   // It has certain specific and privileged behavior with regards to the Schedule class.
   //
-  struct SchedulePrefs : public LoggerLocal {
+  struct SchedulePrefs : public LoggerLocal<SchedulePrefs> {
+    friend class ScheduleCore;
+    friend class Schedule;
+    
+    // Inheritance gives us access to LoggerLocal, and
+    // friend-class gives LoggerLocal access to this class.
+    friend class LoggerLocal;
+    
+    // friend class CrontabTextField;
+    // friend class BypassSwitch;
+    // friend class RememberNextSwitch;
+    // friend class CronNextSensor;
+    
   public:
     Preferences   api;
     Schedule*     schedule;
@@ -164,8 +180,8 @@ protected:
     std::time_t   cronnext;
     
     SchedulePrefs(Schedule* _schedule) :
-      schedule(_schedule),
-      LoggerLocal(_schedule->schedule_name)
+      schedule(_schedule)
+      //LoggerLocal(_schedule->schedule_name)
     {
       //const char *idhash = schedule->id_hash.c_str();
       //schedule_name = schedule->schedule_name; // schedule_name field is inherited from LoggerLocal.
@@ -175,7 +191,7 @@ protected:
     
     // Does this need to return a bool, or can it be void?
     bool initialize(bool force = false) {  // We're not using 'force' yet
-      LOGV("Opening prefs %s for initialization", schedule->id_hash.c_str());
+      LOGV("Opening prefs %s %s for initialization", schedule->schedule_id.c_str(), schedule->id_hash.c_str());
 
       api.begin(schedule->id_hash.c_str(), false); // open prefs read-write
       
@@ -189,7 +205,8 @@ protected:
       // Initializes namespace timestamp, if not already done.
       
       if (! api.isKey("initialized")) {
-        LOGI("Initializing prefs namespace %s with stamp '%li'",
+        LOGI("Initializing prefs namespace %s %s with stamp '%li'",
+          schedule->schedule_id.c_str(),
           schedule->id_hash.c_str(),
           TIMESTAMP
         );
@@ -215,7 +232,8 @@ protected:
       if (force == true || schedule->clear_prefs == true && TIMESTAMP != 0 && initialized != TIMESTAMP) {
         rslt = api.clear(); // && api.putLong("initialized", TIMESTAMP);
         if (rslt) {
-          LOGI("Re-initialized prefs namespace %s with stamp '%li'",
+          LOGI("Re-initialized prefs namespace %s %s with stamp '%li'",
+            schedule->schedule_id.c_str(),
             schedule->id_hash.c_str(),
             TIMESTAMP
           );
@@ -227,7 +245,8 @@ protected:
         api.putLong("initialized", TIMESTAMP);
         initialized = api.getLong("initialized", 0);
         
-        LOGD("Updated prefs namespace %s with stamp '%li'",
+        LOGI("Updated prefs namespace %s %s with stamp '%li'",
+          schedule->schedule_id.c_str(),
           schedule->id_hash.c_str(),
           initialized
         );
@@ -317,26 +336,26 @@ protected:
       
       Preferences api;
 
-      LOGD("Opening prefs %s for writing", id_hash.c_str());
+      LOGD("Opening prefs %s %s for writing", schedule_id.c_str(), id_hash.c_str());
       api.begin(id_hash.c_str(), false); // open as read/write
 
       if (crontab_changed) {
-        LOGI("Saving crontab to prefs %s", crontab.c_str());
+        LOGI("Saving crontab to prefs: '%s'", crontab.c_str());
         api.putString("crontab", String(crontab.c_str()));
       }
 
       if (remember_next_changed) {
-        LOGI("Saving remember_next to prefs %d", remember_next);
+        LOGI("Saving remember_next to prefs: %d", remember_next);
         api.putBool("remember_next", remember_next);
       }
 
       if (cronnext_changed) {
-        LOGI("Saving cronnext to prefs %li", cronnext);
+        LOGI("Saving cronnext to prefs: %li", cronnext);
         api.putLong("cronnext", cronnext);
       }
 
       if (bypass_changed) {
-        LOGI("Saving bypass to prefs %i", bypass);
+        LOGI("Saving bypass to prefs: %i", bypass);
         api.putBool("bypass", bypass);
       }
 
@@ -344,13 +363,36 @@ protected:
 
     } // if any changes
   } // savePrefs()
+  
+  
+  // Wrapper around ScheduleCore::timeIsValid()
+  // Adds validating time against ESPTime
+  //
+  // NOTE: All callable log lines in this method could run many
+  //       times per second, if conditions permit. Only enable
+  //       them if necessary for debugging.
+  //
+  bool timeIsValid(std::time_t now = std::time(NULL)) {
+    ESPTime esp_time = ESPTime::from_epoch_local(now);
+    bool rslt_esp = esp_time.is_valid();
+    bool rslt_parent = ScheduleCore::timeIsValid(now);
+    bool rslt_final = rslt_parent && rslt_esp;
+    
+    if (rslt_final) {
+      // LOGV("timeIsValid() using additional check with ESPTime: %d", rslt_final);
+    } else {
+      LOGV("timeIsValid() using additional check with ESPTime: %d", rslt_final);
+    }
+    
+    return rslt_final;
+  }
 
 }; // Schedule class
 
 
-// ESPHOME COMPONENTS
+// ESPHOME ENTITY COMPONENTS
 
-class BypassSwitch : public switch_::Switch, public Component, public LoggerLocal {
+class BypassSwitch : public switch_::Switch, public Component, public LoggerLocal<BypassSwitch> {
 public:
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
   Schedule *schedule;
@@ -358,8 +400,8 @@ public:
   
   explicit BypassSwitch(Schedule* _schedule) :
     schedule(_schedule),
-    last_state(0),
-    LoggerLocal(_schedule->schedule_name)
+    last_state(0)
+    //LoggerLocal(_schedule->schedule_name)
   {
     //set_name("Disable");
     //set_object_id("disable_schedule_switch_");
@@ -395,7 +437,7 @@ public:
 }; // BypassSwitch class
 
 
-class RememberNextSwitch : public switch_::Switch, public Component, public LoggerLocal {
+class RememberNextSwitch : public switch_::Switch, public Component, public LoggerLocal<RememberNextSwitch> {
 public:
   
   Schedule *schedule;
@@ -403,8 +445,8 @@ public:
   
   RememberNextSwitch(Schedule* _schedule) :
     schedule(_schedule),
-    last_state(0),
-    LoggerLocal(_schedule->schedule_name)
+    last_state(0)
+    //LoggerLocal(_schedule->schedule_name)
   {
     //set_name("Remember Next");
     //set_object_id("remember_next_switch_");
@@ -440,7 +482,7 @@ public:
 }; // RememberNextSwitch class
 
 
-class CronNextSensor : public text_sensor::TextSensor, public Component, public LoggerLocal {
+class CronNextSensor : public text_sensor::TextSensor, public Component, public LoggerLocal<CronNextSensor> {
 public:
   
   Schedule *schedule;
@@ -448,8 +490,8 @@ public:
   
   CronNextSensor(Schedule* _schedule) :
     schedule(_schedule),
-    last_state(""),
-    LoggerLocal(_schedule->schedule_name)
+    last_state("")
+    //LoggerLocal(_schedule->schedule_name)
   {
     //set_name("Next Run");
     //set_object_id("cron_next_sensor_");
@@ -480,7 +522,7 @@ public:
 }; // CronNextSensor class
 
 
-class CrontabTextField : public text::Text, public Component, public LoggerLocal {
+class CrontabTextField : public text::Text, public Component, public LoggerLocal<CrontabTextField> {
 public:
   
   Schedule *schedule;
@@ -488,8 +530,8 @@ public:
   
   CrontabTextField(Schedule* _schedule) :
     schedule(_schedule),
-    last_state(""),
-    LoggerLocal(_schedule->schedule_name)
+    last_state("")
+    //LoggerLocal(_schedule->schedule_name)
   {
     //set_name("Crontab");
     //set_object_id("crontab_text_field_");
