@@ -38,9 +38,7 @@ class CronNextSensor;
 
 
 class Schedule : public Component, public ScheduleCore {
-  friend class LoggerLocal;
-  friend class ScheduleCore;
-  
+
 protected:
   // If true, clears prefs at first boot after flash.
   bool                clear_prefs;
@@ -157,17 +155,6 @@ protected:
   // It has certain specific and privileged behavior with regards to the Schedule class.
   //
   struct SchedulePrefs : public LoggerLocal<SchedulePrefs> {
-    friend class ScheduleCore;
-    friend class Schedule;
-    
-    // Inheritance gives us access to LoggerLocal, and
-    // friend-class gives LoggerLocal access to this class.
-    friend class LoggerLocal;
-    
-    // friend class CrontabTextField;
-    // friend class BypassSwitch;
-    // friend class RememberNextSwitch;
-    // friend class CronNextSensor;
     
   public:
     Preferences   api;

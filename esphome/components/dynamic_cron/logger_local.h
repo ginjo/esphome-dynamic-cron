@@ -25,18 +25,6 @@ const char *LOGTAG = "dynamic_cron";
 template <typename Derived> // So we can access the derived instances from here.
 class LoggerLocal {
   
-  friend class ScheduleCore;
-  friend class Schedule;
-  friend class SchedulePrefs;
-  
-  friend class ScheduleMock;
-  friend class ScheduleEsphomeMock;
-  
-  // friend class CrontabTextField;
-  // friend class BypassSwitch;
-  // friend class RememberNextSwitch;
-  // friend class CronNextSensor;
-  
 public:
   //std::string schedule_name;
   //std::string schedule_id;
@@ -87,6 +75,8 @@ public:
   // MUST be terminated with an escaped literal newline '\<newline>'.
   // Use the stringizing character '#' to resolve the macro vars to a string of their name.
   // NOTE: There's a lot of fancy stuff going on in this macro definition with preprocessor directives.
+  //
+  // TODO: Consider moving the SLOG methods to outside the class into the esphome::dynamic_cron namespace.
   
   #if defined(IS_NATIVE) && IS_NATIVE == 1
   
@@ -100,9 +90,9 @@ public:
       template<typename... Args> \
       void LOG##level(const char *fmt, Args... args) { \
         std::string tag = LOGTAG; \
-        SLOG##level((tag + "_" + derived()->schedule->getId()).c_str(), fmt, args...); \
+        SLOG##level((tag + "." + derived()->schedule->getId()).c_str(), fmt, args...); \
       }
-      //
+      // This will not work! Tried many many things, but will not compile.
       // SLOG##level((tag + "_" + derived()->schedule->schedule_id).c_str(), fmt, args...); \
       //
       //
@@ -115,7 +105,7 @@ public:
       template<typename... Args> \
       void LOG##level(const char *fmt, Args... args) { \
         std::string tag = LOGTAG; \
-        SLOG##level((tag + "_" + derived()->schedule->getId()).c_str(), fmt, args...); \
+        SLOG##level((tag + "." + derived()->schedule->getId()).c_str(), fmt, args...); \
       }
       
   #endif

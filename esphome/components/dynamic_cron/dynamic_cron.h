@@ -42,20 +42,6 @@ void printVersion() {
 // Core definition of the schedule object.
 class ScheduleCore : public LoggerLocal<ScheduleCore> {
   
-  // Friends can access our protected and private members.
-  // These are friends so they can access the schedule_name variable.
-  //
-  // Inheritance gives us access to LoggerLocal, and
-  // friend-class gives LoggerLocal access to this class.
-  friend class LoggerLocal;
-  friend class ScheduleMock;
-  friend class ScheduleEsphomeMock;
-  
-  // friend class CrontabTextField;
-  // friend class BypassSwitch;
-  // friend class RememberNextSwitch;
-  // friend class CronNextSensor;
-  
 protected:
   
   // Basic data points.
@@ -485,13 +471,13 @@ protected:
 
   // Adds a schedule object to a globally accessible vector array 'all_schedules'.
   // Are we still using this?
-  static void AddToSchedules(ScheduleCore* schedule) {
+  static void AddToSchedules(ScheduleCore* _schedule) {
       SLOGV(LOGTAG, "Adding Schedule '%s' %s to Schedules vector",
-        schedule->schedule_name.c_str(),
-        schedule->schedule_id.c_str()
+        _schedule->schedule_name.c_str(),
+        _schedule->schedule_id.c_str()
       );
       
-      Schedules().push_back(schedule);
+      Schedules().push_back(_schedule);
   }
   
 
