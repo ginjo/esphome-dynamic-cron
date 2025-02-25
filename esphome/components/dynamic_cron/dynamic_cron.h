@@ -1,9 +1,3 @@
-//
-// TODO: Consider an esphome text field for the user to enter a time-formatting expression,
-//       for the display of the cronnext time in the browser.
-//
-// Maybe see here for polymorphic members vars:
-// https://stackoverflow.com/questions/17035951/member-variable-polymorphism-argument-by-reference
 
 #pragma once
 
@@ -170,12 +164,7 @@ public:
  
 
   // Gets human-readable time of cronnext field (not the calc).
-  // TODO: Figure out how to show the error from a malformed crontab expression.
-  //       I think if a cron expression fails, the error should be sent to an
-  //       instance variable (string). If that instance var is not "", then return that
-  //       instead of nothing or '---' from this method..
-  //       Then any time the cronNextVector returns valid results,
-  //       clear the crontab error variable.
+  //
   std::string cronNextString(std::string _default="") {
     if (cronnext == 0) {
       //std::string str(_default);
@@ -194,6 +183,7 @@ public:
 
 
   // Returns multiple sequential cronNextCalc results, as a map of {time_t, cron-next-string}.
+  //
   std::map<std::time_t, std::string> cronNextMap(int count = 1, std::string _crontab = "", std::time_t ref_time = 0) {
 
     if (_crontab == "") { _crontab = crontab; }
@@ -245,8 +235,6 @@ public:
 
 
   // Sets cronnext time_t from crontab field.
-  // TODO: Allow a user-entered value to be passed. See below for prototype (works in tests).
-  // TODO: This is still being called too early in boot/setup phase, way before time has been synced.
   //
   void setCronNext() {
     if (timeIsValid()) {  // If system time is not valid, skip all of this.
@@ -297,7 +285,7 @@ public:
       ! bypass &&
       difftime(input, timeNow()) > 0 &&
       difftime(cronNextCalc(), input) > 0
-      // TODO: Why does input need to be < cronNextCalc()?
+      // Why does input need to be < cronNextCalc()?
       // It allows a one-off run, while still maintaining a legit crontab schedule.
       // If no crontab exists, then input can be any time in the future. In that case,
       // we need to make sure to clear out the manuall cronnext after it's used,
@@ -536,10 +524,8 @@ protected:
   // Is current (or given) time valid (synced & legit)?
   // Even if it's a valid system time, it must be within a reasonable range,
   // so it can't be 0 (1969, 1970, something like that, depending on locale).
-  // We're not actually checking with ESPHome, just with the core c++ time.
-  // TODO: We might have to check with esphome rtc to see if time is synced/valid,
-  // as nothing else we've tried seems to work reliably. Look into the base Time component.
-  // Hmm... this might only be an issue during the first boot after flashing an update.
+  // We check with ESPHome, if it's loaded, but we always fall back to core system time.
+  //
   //
   // NOTE: All callable log lines in this method could run many
   //       times per second, if conditions permit. Only enable
@@ -582,6 +568,7 @@ protected:
 
 
   // Returns sorted vector of next time_t values for given vector-of-crontab-strings.
+  //
   std::vector<std::time_t> vectorOfNext(std::vector<std::string> crontabs, std::time_t ref_time = 0) {
     if (ref_time == 0) { ref_time = timeNow(); }
     std::time_t _ref_time = ref_time;

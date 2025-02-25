@@ -92,7 +92,7 @@ public:
         std::string tag = LOGTAG; \
         SLOG##level((tag + "." + derived()->schedule->getId()).c_str(), fmt, args...); \
       }
-      // This will not work! Tried many many things, but will not compile.
+      // This will not work! Tried many many things, but will not compile due to access restrictions.
       // SLOG##level((tag + "_" + derived()->schedule->schedule_id).c_str(), fmt, args...); \
       //
       //
@@ -111,32 +111,13 @@ public:
   #endif
   
 
-  
   CREATE_LOG_FUNC(E)
   CREATE_LOG_FUNC(W)
   CREATE_LOG_FUNC(I)
   CREATE_LOG_FUNC(D)
   CREATE_LOG_FUNC(V)
   //CREATE_LOG_FUNC(VV)
-
   
-  // MEMBER METHODS (original)
-  //
-  // These methds add boilerplate tags-and-schedule-name from the schedule instance, to the log line.
-  //
-  // You must define a pointer *schedule that points to the relevant schedule (or schedule-core) instance.
-  //
-  // template<typename... Args>
-  // void LOGD(const char *fmt, Args... args) {
-  //   std::string tag = LOGTAG;
-  //   SLOGD((tag + " " + schedule_name).c_str(), fmt, args...);
-  // }
-  // 
-  // template<typename... Args>
-  // void LOGE(const char *fmt, Args... args) {
-  //     std::string tag = LOGTAG;
-  //     SLOGE((tag + " " + schedule_name).c_str(), fmt, args...);
-  // }
   
 }; // LoggerLocal
 }  // namespace dynamie_cron
