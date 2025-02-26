@@ -112,14 +112,17 @@ namespace dynamic_cron {
   // This will crash if called from main() or setup(), since ScheduleMockInst doesn't exist yet.
   void printSystemTime() {
     std::string time_string = ScheduleMock::timeToFormattedString(std::time(NULL));
-    ScheduleMock::SLOGI("dynamic_cron", "System time %s", time_string.c_str());
+    //ScheduleMock::SLOGI("dynamic_cron", "System time %s", time_string.c_str());
+    SLOGI("dynamic_cron", "System time %s", time_string.c_str());
   }
 
   void setFirmwareTimestamp(std::time_t val = TIMESTAMP_MOCK) {
-    LoggerLocal<void>::SLOGI("dynamic_cron", "Current firmware TIMESTAMP %li", TIMESTAMP);
+    //LoggerLocal<void>::SLOGI("dynamic_cron", "Current firmware TIMESTAMP %li", TIMESTAMP);
+    SLOGI("dynamic_cron", "Current firmware TIMESTAMP %li", TIMESTAMP);
   
     TIMESTAMP = val; //TIMESTAMP_MOCK;
-    LoggerLocal<void>::SLOGI("dynamic_cron", "New firmware TIMESTAMP %li", TIMESTAMP);
+    //LoggerLocal<void>::SLOGI("dynamic_cron", "New firmware TIMESTAMP %li", TIMESTAMP);
+    SLOGI("dynamic_cron", "New firmware TIMESTAMP %li", TIMESTAMP);
   }
 
 

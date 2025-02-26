@@ -22,21 +22,42 @@ namespace dynamic_cron {
 const char *LOGTAG = "dynamic_cron";
 
 
-template <typename Derived> // So we can access the derived instances from here.
+// Top level "free" (but namespaced) log functions.
+//
+#if defined(IS_NATIVE) && IS_NATIVE == 1
+  #define CREATE_LOG_FUNC_FREE(level) \
+    template<typename... Args> \
+    void SLOG##level(const char *tag, const char *fmt, Args... args) { \
+      printf("[%s][%s]: ", #level, tag); \
+      printf(fmt, args...); \
+      printf("\n"); \
+    }
+    
+#else
+  #define CREATE_LOG_FUNC_FREE(level) \
+    template<typename... Args> \
+    void SLOG##level(const char *tag, const char *fmt, Args... args) { \
+      ESP_LOG##level(tag, fmt, args...); \
+    }
+    
+#endif
+
+CREATE_LOG_FUNC_FREE(E)
+CREATE_LOG_FUNC_FREE(W)
+CREATE_LOG_FUNC_FREE(I)
+CREATE_LOG_FUNC_FREE(D)
+CREATE_LOG_FUNC_FREE(V)
+//CREATE_LOG_FUNC(VV)
+
+
+// Templated logger class so we can access the derived instances from within it.
+// If you need to call a static method on a templated class, you can do: LoggerLocal<void>::someMethod().
+//
+template <typename Derived> 
 class LoggerLocal {
   
 public:
-  //std::string schedule_name;
-  //std::string schedule_id;
-  
-  LoggerLocal() {}
-  
-  // LoggerLocal(std::string _name)
-  //   //schedule_name(_name)
-  // {}
-  
-  //virtual LoggerLocal* thisSchedule() = 0;
-  
+    
   Derived* derived() {
     return static_cast<Derived*>(this);
   }
@@ -60,11 +81,6 @@ public:
   // Remember that templated methods can't be virtual.
   //
   //
-  // STATIC CLASS METHODS
-  // 
-  // These methods can be called from anywhere.
-  //
-  //
   // MEMBER METHODS
   //
   // These methds add boilerplate tags-and-schedule-name from the schedule instance, to the log line.
@@ -76,17 +92,9 @@ public:
   // Use the stringizing character '#' to resolve the macro vars to a string of their name.
   // NOTE: There's a lot of fancy stuff going on in this macro definition with preprocessor directives.
   //
-  // TODO: Consider moving the SLOG methods to outside the class into the esphome::dynamic_cron namespace.
   
   #if defined(IS_NATIVE) && IS_NATIVE == 1
-  
     #define CREATE_LOG_FUNC(level) \
-      template<typename... Args> \
-      static void SLOG##level(const char *tag, const char *fmt, Args... args) { \
-        printf("[%s][%s]: ", #level, tag); \
-        printf(fmt, args...); \
-        printf("\n"); \
-      } \
       template<typename... Args> \
       void LOG##level(const char *fmt, Args... args) { \
         std::string tag = LOGTAG; \
@@ -94,14 +102,9 @@ public:
       }
       // This will not work! Tried many many things, but will not compile due to access restrictions.
       // SLOG##level((tag + "_" + derived()->schedule->schedule_id).c_str(), fmt, args...); \
-      //
-      //
+
   #else
     #define CREATE_LOG_FUNC(level) \
-      template<typename... Args> \
-      static void SLOG##level(const char *tag, const char *fmt, Args... args) { \
-        ESP_LOG##level(tag, fmt, args...); \
-      } \
       template<typename... Args> \
       void LOG##level(const char *fmt, Args... args) { \
         std::string tag = LOGTAG; \
@@ -110,7 +113,6 @@ public:
       
   #endif
   
-
   CREATE_LOG_FUNC(E)
   CREATE_LOG_FUNC(W)
   CREATE_LOG_FUNC(I)
@@ -118,8 +120,8 @@ public:
   CREATE_LOG_FUNC(V)
   //CREATE_LOG_FUNC(VV)
   
-  
 }; // LoggerLocal
-}  // namespace dynamie_cron
+
+}  // namespace dynamic_cron
 }  // namespace esphome
 

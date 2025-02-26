@@ -29,7 +29,8 @@ std::time_t TIMESTAMP;
 std::string TIME_FORMAT = "%Y-%m-%d %H:%M:%S";
 
 void printVersion() {
-  LoggerLocal<void>::SLOGI("dynamic_cron", "version: %s, firmware build: %li", VERSION.c_str(), TIMESTAMP);
+  //LoggerLocal<void>::SLOGI("dynamic_cron", "version: %s, firmware build: %li", VERSION.c_str(), TIMESTAMP);
+  SLOGI("dynamic_cron", "version: %s, firmware build: %li", VERSION.c_str(), TIMESTAMP);
 }
 
 
