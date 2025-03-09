@@ -1,10 +1,11 @@
 # ESPHome Dynamic Cron Scheduler
 
   This [ESPHome](https://esphome.io) External Component provides a cron interface for scheduling anything in ESPHome.
-  Live editable crontab expressions, without requiring re-flash or reboot, set this component
-  apart from the built-in ESPHome cron functionality.
+  Live editable cron expressions, without requiring re-flash or reboot, set this component
+  apart from the built-in ESPHome cron functionality. This component runs entirely on ESPHome
+  and does not require HomeAssistant.
   
-  Features:
+  Key Features:
   
   * Live editable cron expressions, no re-flash or reboot required.
   * Multiple cron expressions for each schedule.
@@ -48,8 +49,8 @@
   ```yaml
     
     esphome:
-      ...
-      ...
+      # ... config ...
+      # ... more config ...
     
     external_components:
       - source:
@@ -60,10 +61,10 @@
       - name: Irrigation
         lambda: |-
           ESP_LOGD("irrigation", "Starting irrigation");
-          id(sprinkler_instance).start_full_cycle();
+          // ... any c++ code ...
           return {true};
           
-        # You must return true or false from the lambda.
+          # You must return true or false from the lambda.
   ```
 
   Here's a link to a fully functioning [ESPHome configuration file](test/example_esphome.yml)
@@ -114,6 +115,11 @@
     If this option is false, preferences for this schedule will not be cleared during first boot,
     or any other boot with this firmware.
     
+  * **time_format**: string, *optional* `("%Y-%m-%d %H:%M:%S")`
+    
+    A C-style strftime format string describing the display of schedule date and time.
+    The default format string displays date and time as `2025-03-14 21:15:43`.
+
 #### Preferences, Defaults, and Memory
   
   During normal operation, changes made to the `crontab`, `disable`, and `remember_next`
@@ -247,7 +253,7 @@
     test/run.sh -vv -e esphome
   ```
   
-  ### Mapped Directories
+  #### Mapped Directories
   
   There are three relevant directories on the Docker host that are mapped into the `esphome/esphome` container.
   Each of these directories can be overridden with environment variable. The environment variables can be set
