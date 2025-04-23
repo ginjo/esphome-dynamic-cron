@@ -117,18 +117,18 @@
     
   * **time_format**: string, *optional* `("%Y-%m-%d %H:%M:%S")`
     
-    A C-style strftime format string describing the display of schedule date and time.
+    A C-style `strftime` format string describing the display of schedule date and time.
     The default format string displays date and time as `2025-03-14 21:15:43`.
 
 #### Preferences, Defaults, and Memory
   
   During normal operation, changes made to the `crontab`, `disable`, and `remember_next`
-  controls, will be stored in NVS (non volatile storage). If `remember_next` is not
+  controls, will be stored in NVS (non volatile storage). If `remember_next` is
   set to `true`, the next-run time will also be stored. All of these settings will be remembered
   across reboots.
   
   Settings will *generally* be remembered across firmware updates, but only if ALL of the following are true:
-  * The `id` of the schedule is not changed.
+  * The `id` of the schedule has not changed.
   * The `clear_prefs` configuration option is not set to `true`.
   
   When defaults are specified in the configuration, they will be used when ANY of the following are true:
@@ -143,7 +143,7 @@
 ## Usage
     
   Once your ESP device is up and running, there will be 4 entities available for each schedule created.
-  These entities can be accessed through the ESPHome web server or through the API, including Home Assistant.
+  These entities can be accessed through the ESPHome web GUI or through the API, including Home Assistant.
   
   * Crontab (text field)
   * Next run time (text-sensor)
@@ -188,7 +188,7 @@
   
   * The stored next-run is in the past.
   * Disable Schedule is not set to `true`.
-  * Remember Next is not set to `true`.
+  * Remember Next is set to `true`.
   
   ### Multiple Schedules
   
