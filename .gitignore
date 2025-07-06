@@ -2,6 +2,7 @@
 .pio/
 .platformio/
 .esphome/
+.DS_Store
 /.env
 /core
 /src/

@@ -439,7 +439,8 @@ public:
     //set_name("Remember Next");
     //set_object_id("remember_next_switch_");
     set_disabled_by_default(false);
-    set_icon("mdi:timer-off-outline");
+    //set_icon("mdi:timer-off-outline");
+    set_icon("mdi:memory");
     set_restore_mode(switch_::SWITCH_RESTORE_DISABLED);
     set_component_source("dynamic_cron");
     App.register_switch(this);
