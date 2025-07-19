@@ -152,8 +152,8 @@ protected:
   //
   // For linux epoch converter see: https://www.epochconverter.com/
   //
-  // Note that this SchedulePrefs class/struct is defined within the Schedule class.
-  // It has certain specific and privileged behavior with regards to the Schedule class.
+  // Note that this SchedulePrefs class/struct is a sub class defined within the Schedule class.
+  // As such, it has certain specific and privileged behavior with regards to the parent Schedule class.
   //
   struct SchedulePrefs : public LoggerLocal<SchedulePrefs> {
     
@@ -162,6 +162,7 @@ protected:
     Schedule*     schedule;
     
     std::time_t   initialized;  // TIMESTAMP of firmware in seconds-since-epoch at compile time (from __init__.py).
+                                // I think TIMESTAMP is hardcoded in python at firmware compile time.
     std::string   crontab;
     bool          remember_next;
     bool          bypass;
