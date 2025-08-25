@@ -6,6 +6,7 @@
 /.env
 /core
 /src/
+*.sublime-*
 ._*
 
 # These should be at end of list.
