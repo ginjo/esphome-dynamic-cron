@@ -2,6 +2,12 @@
 // TODO: Consider saving the prefs object within the Schedule, instead of loading it up every run though the loop.
 //       Then compare Schedule fields against that prefs object, instead of against a new prefs object every time
 //       through the loop. Then whenever you save anything to prefs NVS, get a new prefs object to store in the Schedule.
+//
+// TODO: The cronnext value showing in esphome, after an OTA update, is incorrect,
+//       until the crontab string is changed, or the device is rebooted.
+//       Note that the optional display of the multiple cronnext values is NOT incorrect
+//       at any point during this issue.
+//       It is not known if the actual next-start-time is incorrect, or if this is a display issue.
 
 
 #pragma once
