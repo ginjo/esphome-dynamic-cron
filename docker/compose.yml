@@ -4,7 +4,7 @@ services:
   esphome:
     container_name: esphome
     hostname: esphome
-    image: esphome/esphome:"${ESPHOME_VERSION:-2024.7.3}"
+    image: "esphome/esphome:${ESPHOME_VERSION:-2024.7.3}"
     # This image is 50% bigger (about 643Mb).
     #image: esphome/esphome:2024.12.4
     volumes:
