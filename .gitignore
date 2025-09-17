@@ -7,7 +7,10 @@
 /core
 /src/
 *.sublime-*
+
+# Mountain Duck, TextMate artifacts, or maybe just Mac Finder stuff.
 ._*
+
 
 # These should be at end of list.
 # It gives us a way to mark a directory as 'keep'.
