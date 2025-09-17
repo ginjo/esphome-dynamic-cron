@@ -4,7 +4,7 @@ services:
   esphome:
     container_name: esphome
     hostname: esphome
-    image: esphome/esphome:2024.7.3
+    image: esphome/esphome:"${ESPHOME_VERSION:-2024.7.3}"
     # This image is 50% bigger (about 643Mb).
     #image: esphome/esphome:2024.12.4
     volumes:
@@ -27,6 +27,7 @@ services:
       - "$PWD:/DynamicCron:rw"
       # The src/ directory is where platformio will look for esphome sourc files.
       # The default is the /esphome/ directory in the esphome/esphome docker image.
+      # Note that DynamicCron/src/esphome is a symlink that points to /esphome within the container.
       - "${SRC_DIR:-$PWD/src}:/DynamicCron/src:ro"
       # Enables timezone resolution.
       - "/etc/localtime:/etc/localtime:ro"
