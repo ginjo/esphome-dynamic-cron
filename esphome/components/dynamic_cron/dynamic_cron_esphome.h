@@ -404,8 +404,8 @@ public:
     set_icon("mdi:timer-off-outline");
     set_restore_mode(switch_::SWITCH_RESTORE_DISABLED);
     set_component_source("dynamic_cron");
-    App.register_switch(this);
-    App.register_component(this);
+    //App.register_switch(this);
+    //App.register_component(this);
     schedule->bypass_switch = this;
     //schedule_name = schedule->schedule_name; // schedule_name field is inherited from LoggerLocal.
   }

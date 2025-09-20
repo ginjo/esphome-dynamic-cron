@@ -88,9 +88,9 @@ async def to_code(config):
     name = str(config.get(CONF_NAME, config.get(CONF_ID)))
     
     if CONF_ID in config:
-        id_ = str(config[CONF_ID])
+        id_ = config[CONF_ID].id
     else:
-        id_ = str(sanitize(snake_case(config[CONF_NAME])))
+        id_ = sanitize(snake_case(config[CONF_NAME].id))
         
     lamb = await cg.process_lambda(
         # The 3rd param here is the lambda capture flag to be passed as the [<flag>] part of the c++ lambda.
@@ -112,15 +112,16 @@ async def to_code(config):
     cg.add(var.setTimeFormatDefault(config[CONF_TIME_FORMAT]))
     
     
-    bypass_switch = cg.RawStatement(
-      f'esphome::dynamic_cron::BypassSwitch *bypass_switch_{id_} = new esphome::dynamic_cron::BypassSwitch({id_});\n' +
-      f'bypass_switch_{id_}->set_name("{name} disable");\n' +
-      f'bypass_switch_{id_}->set_object_id("bypass_switch_{id_}");\n'
-    )
-    cg.add(bypass_switch)
-    
-    ### This does not work as written.
-    #cg.add(await bypass_switch.set_object_id("var_bypass_switch"))
+    # bypass_switch = cg.RawStatement(
+    #   f'esphome::dynamic_cron::BypassSwitch *bypass_switch_{id_} = new esphome::dynamic_cron::BypassSwitch({id_});\n' +
+    #   f'bypass_switch_{id_}->set_name("{name} disable");\n' +
+    #   f'bypass_switch_{id_}->set_object_id("bypass_switch_{id_}");\n'
+    # )
+    bypass_switch_id = cg.declare_id(BypassSwitch)(f"bypass_switch_{id_}")
+    bypass_switch = cg.new_Pvariable(bypass_switch_id, id_)
+    await cg.register_component(bypass_switch_id, {})
+    await switch.register_switch(bypass_switch_id, {})
+    cg.add(bypass_switch.set_name(f"{name} disable"))
     
     
     remember_next_switch = cg.RawStatement(

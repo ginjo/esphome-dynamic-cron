@@ -3,7 +3,7 @@
 .platformio/
 .esphome/
 .DS_Store
-/.env
+.env
 /core
 /src/
 *.sublime-*
