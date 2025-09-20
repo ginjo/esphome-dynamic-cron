@@ -19,16 +19,26 @@ services:
       # It appears that platformio is looking in /root within the container
       # for the .platformio, so we're mapping the host .platformio to /root/.platformio
       # within the container, and also to /DynamicCron/.platformio .
+      # NOTE: esphome 2024.12 has started using their own fork of a portion
+      # of the source code that used to be pulled directly from the platformio project.
+      # See https://esphome.io/changelog/2024.12.0/
+      # So now we should test/build  dynamic-cron using the .platformio dir
+      # that is generated from esphome. Make sure you define this env var
+      # as something like '/mnt/efs/esphome/.platformio'.
       - "${DOT_PLATFORMIO:-$PWD/.platformio}:/root/.platformio:rw"
       - "${DOT_PLATFORMIO:-$PWD/.platformio}:/DynamicCron/.platformio:rw"
+      #
       # Directory where platformio will output build and firmware files.
       - "${DOT_PIO:-$PWD/.pio}:/DynamicCron/.pio:rw"
+      #
       # Maps the location of the external component project directory on the host.
       - "$PWD:/DynamicCron:rw"
+      #
       # The src/ directory is where platformio will look for esphome sourc files.
       # The default is the /esphome/ directory in the esphome/esphome docker image.
       # Note that DynamicCron/src/esphome is a symlink that points to /esphome within the container.
       - "${SRC_DIR:-$PWD/src}:/DynamicCron/src:ro"
+      #
       # Enables timezone resolution.
       - "/etc/localtime:/etc/localtime:ro"
     environment:

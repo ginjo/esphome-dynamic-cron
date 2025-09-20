@@ -52,13 +52,15 @@
 ###  the esp32? Or should we mock all esp-dependent and any hardware-dependent classes and functions, so we
 ###  can test on the native host (linux)?
 
-# pio test --without-uploading -e esp32 -c test/platformio.ini
-#pio test --without-uploading -e native -c test/platformio.ini ${@}
 pio test --without-uploading -c test/platformio.ini ${@--e native}
-# You can add --without-testing when you run this for 'esphome',
-# if you want to suppress the error about not finding the serial port.
-# It will still build the firmware.
-
+#
+# If you want to suppress the error about not finding the serial port,
+# when you run this for 'esphome', you can add --without-testing, and 
+# it will still build the firmware.
+#
+# Usage:
+#   test/run.sh [-e native|esphome] [other pio-test options...]
+#
 # To clean out the build cache run:
 #   pio run --target clean -e native -c test/platformio.ini
 
