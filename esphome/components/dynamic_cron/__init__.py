@@ -75,15 +75,31 @@ CONFIG_SCHEMA = cv.Schema({
 # Since we only need the timestamp once, we do it here, outside of the to_code() method.
 # NOTE: This is number seconds since epoch. We round() to chop off the decimal places.
 #
-global_timestamp = cg.RawStatement(f'esphome::dynamic_cron::TIMESTAMP = {round(time())};\n')
-cg.add(global_timestamp)
+# global_build_timestamp = cg.RawStatement(f'uint32_t BUILD_TIMESTAMP = {round(time())};\n')
+# cg.add_global(global_build_timestamp)
+
+# namespaced_timestamp = cg.RawStatement(f'esphome::dynamic_cron::TIMESTAMP = BUILD_TIMESTAMP;\n')
+# cg.add(namespaced_timestamp)
+
+# Defines at top of main.cpp.
+define_global_timestamp = cg.RawStatement(
+    'namespace esphome {\n' +
+    '  namespace dynamic_cron {\n' +
+    '    std::time_t TIMESTAMP;\n' +
+    '  }\n' +
+    '}\n'
+)
+cg.add_global(define_global_timestamp)
+
+# Assigns from within main.cpp setup().
+assign_global_timestamp = cg.RawStatement(f'esphome::dynamic_cron::TIMESTAMP = {round(time())};\n')
+cg.add(assign_global_timestamp)
 
 
 # This gets called for each item in the dynamic_cron:[] array in the yaml config.
+#async def to_code(config):
+# We use this form so cg.declare_id()() will work.
 async def to_code(config):
-
-    # global_timestamp = cg.RawStatement(f'esphome::dynamic_cron::TIMESTAMP = {round(time())};\n')
-    # cg.add(global_timestamp)
     
     name = str(config.get(CONF_NAME, config.get(CONF_ID)))
     
@@ -117,33 +133,77 @@ async def to_code(config):
     #   f'bypass_switch_{id_}->set_name("{name} disable");\n' +
     #   f'bypass_switch_{id_}->set_object_id("bypass_switch_{id_}");\n'
     # )
-    bypass_switch_id = cg.declare_id(BypassSwitch)(f"bypass_switch_{id_}")
-    bypass_switch = cg.new_Pvariable(bypass_switch_id, id_)
-    await cg.register_component(bypass_switch_id, {})
-    await switch.register_switch(bypass_switch_id, {})
-    cg.add(bypass_switch.set_name(f"{name} disable"))
+    # cg.add(bypass_switch)
+    #
+    # bypass_switch_id = BypassSwitch.new(f"bypass_switch_{id_}")
+    # bypass_switch    = cg.new_Pvariable(bypass_switch_id, id_)
+    # await cg.register_component(bypass_switch, {})
+    # await switch.register_switch(bypass_switch, {})
+    # cg.add(bypass_switch.set_name(f"{name} disable"))
+    #
+    cg.add(cg.RawStatement(f'esphome::dynamic_cron::BypassSwitch *bypass_switch_{id_} = new esphome::dynamic_cron::BypassSwitch({id_});'))
+    cg.add(cg.RawStatement(f'bypass_switch_{id_}->set_name("{name} disable");'))
+    cg.add(cg.RawStatement(f'bypass_switch_{id_}->set_object_id("bypass_switch_{id_}");'))
+    # cg.add(cg.RawStatement(f'{var}->set_bypass_switch(bypass_switch_{id_});'))
+    # cg.add(cg.RawStatement(f'bypass_switch_{id_}->set_parent({var});'))
     
     
-    remember_next_switch = cg.RawStatement(
-      f'esphome::dynamic_cron::RememberNextSwitch *remember_next_switch_{id_} = new esphome::dynamic_cron::RememberNextSwitch({id_});\n'
-      f'remember_next_switch_{id_}->set_name("{name} remember next");\n' +
-      f'remember_next_switch_{id_}->set_object_id("remember_next_switch_{id_}");\n'
-    )
-    cg.add(remember_next_switch)
+    # remember_next_switch = cg.RawStatement(
+    #   f'esphome::dynamic_cron::RememberNextSwitch *remember_next_switch_{id_} = new esphome::dynamic_cron::RememberNextSwitch({id_});\n' +
+    #   f'remember_next_switch_{id_}->set_name("{name} remember next");\n' +
+    #   f'remember_next_switch_{id_}->set_object_id("remember_next_switch_{id_}");\n'
+    # )
+    # cg.add(remember_next_switch)
+    #
+    # remember_next_switch_id = cg.MockObj(id_=f"remember_next_switch_{id_}", type=RememberNextSwitch)
+    # remember_next_switch    = cg.new_Pvariable(remember_next_switch_id, id_)
+    # await cg.register_component(remember_next_switch, {})
+    # await switch.register_switch(remember_next_switch, {})
+    # cg.add(remember_next_switch.set_name(f"{name} remember next"))
+    #
+    cg.add(cg.RawStatement(f'esphome::dynamic_cron::RememberNextSwitch *remember_next_switch_{id_} = new esphome::dynamic_cron::RememberNextSwitch({id_});'))
+    cg.add(cg.RawStatement(f'remember_next_switch_{id_}->set_name("{name} remember next");'))
+    cg.add(cg.RawStatement(f'remember_next_switch_{id_}->set_object_id("remember_next_switch_{id_}");'))
+    # cg.add(cg.RawStatement(f'{var}->set_remember_next_switch(remember_next_switch_{id_});'))
+    # cg.add(cg.RawStatement(f'remember_next_switch_{id_}->set_parent({var});'))
+
+    
+    # cron_next_sensor = cg.RawStatement(
+    #   f'esphome::dynamic_cron::CronNextSensor *cron_next_sensor_{id_} = new esphome::dynamic_cron::CronNextSensor({id_});\n' +
+    #   f'cron_next_sensor_{id_}->set_name("{name} next run");\n' +
+    #   f'cron_next_sensor_{id_}->set_object_id("cron_next_sensor_{id_}");\n'
+    # )
+    # cg.add(cron_next_sensor)
+    #
+    # cron_next_sensor_id = cg.MockObj(id_=f"cron_next_sensor_{id_}", type=CronNextSensor)
+    # cron_next_sensor    = cg.new_Pvariable(cron_next_sensor_id, id_)
+    # await cg.register_component(cron_next_sensor, {})
+    # await text_sensor.register_text_sensor(cron_next_sensor, {})
+    # cg.add(cron_next_sensor.set_name(f"{name} next run"))
+    #
+    cg.add(cg.RawStatement(f'esphome::dynamic_cron::CronNextSensor *cron_next_sensor_{id_} = new esphome::dynamic_cron::CronNextSensor({id_});'))
+    cg.add(cg.RawStatement(f'cron_next_sensor_{id_}->set_name("{name} next run");'))
+    cg.add(cg.RawStatement(f'cron_next_sensor_{id_}->set_object_id("cron_next_sensor_{id_}");'))
+    # cg.add(cg.RawStatement(f'{var}->set_cron_next_sensor(cron_next_sensor_{id_});'))
+    # cg.add(cg.RawStatement(f'cron_next_sensor_{id_}->set_parent({var});'))
     
     
-    cron_next_sensor = cg.RawStatement(
-      f'esphome::dynamic_cron::CronNextSensor *cron_next_sensor_{id_} = new esphome::dynamic_cron::CronNextSensor({id_});\n' +
-      f'cron_next_sensor_{id_}->set_name("{name} next run");\n' +
-      f'cron_next_sensor_{id_}->set_object_id("cron_next_sensor_{id_}");\n'
-    )
-    cg.add(cron_next_sensor)
-    
-    
-    crontab_text_field = cg.RawStatement(
-      f'esphome::dynamic_cron::CrontabTextField *crontab_text_field_{id_} = new esphome::dynamic_cron::CrontabTextField({id_});\n' +
-      f'crontab_text_field_{id_}->set_name("{name} crontab");\n' +
-      f'crontab_text_field_{id_}->set_object_id("crontab_text_field_{id_}");\n'
-    )
-    cg.add(crontab_text_field)
+    # crontab_text_field = cg.RawStatement(
+    #   f'esphome::dynamic_cron::CrontabTextField *crontab_text_field_{id_} = new esphome::dynamic_cron::CrontabTextField({id_});\n' +
+    #   f'crontab_text_field_{id_}->set_name("{name} crontab");\n' +
+    #   f'crontab_text_field_{id_}->set_object_id("crontab_text_field_{id_}");\n'
+    # )
+    # cg.add(crontab_text_field)
+    #
+    # crontab_text_field_id = cg.MockObj(id_=f"crontab_text_field_{id_}", type=CrontabTextField)
+    # crontab_text_field    = cg.new_Pvariable(crontab_text_field_id, id_)
+    # await cg.register_component(crontab_text_field, {})
+    # await text.register_text(crontab_text_field, {})
+    # cg.add(crontab_text_field.set_name(f"{name} crontab"))
+    #
+    cg.add(cg.RawStatement(f'esphome::dynamic_cron::CrontabTextField *crontab_text_field_{id_} = new esphome::dynamic_cron::CrontabTextField({id_});'))
+    cg.add(cg.RawStatement(f'crontab_text_field_{id_}->set_name("{name} crontab");'))
+    cg.add(cg.RawStatement(f'crontab_text_field_{id_}->set_object_id("crontab_text_field_{id_}");'))
+    # cg.add(cg.RawStatement(f'{var}->set_crontab_text_field(crontab_text_field_{id_});'))
+    # cg.add(cg.RawStatement(f'crontab_text_field_{id_}->set_parent({var});'))
 

@@ -63,4 +63,15 @@ pio test --without-uploading -c test/platformio.ini ${@--e native}
 #
 # To clean out the build cache run:
 #   pio run --target clean -e native -c test/platformio.ini
+#
+# NOTE: I don't think we can use the 'esphome' test run any more.
+#       Instead, we should create a test project in our esphome directory that uses this component,
+#       and compile from there using `esphome compile config/test_dynamic_cron.yaml.
+#       The same dynamic_cron esphome tests can be run from the on-boot lambda.
+#
+#       The reason for this is that esphome now (2024.12) uses its own fork of some libraries installed in .platformio.
+#       Platformio will overwrite the esphom-generated .platformio directory, and tests will fail.
+#
+# TODO: Create a test esphome project here within this component's directory.
+
 

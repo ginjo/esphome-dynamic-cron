@@ -24,7 +24,9 @@ namespace dynamic_cron {
 
 // This is the timestamp of the firmware build.
 // This will be set in python and is seconds from epoch.
-std::time_t TIMESTAMP;
+extern std::time_t TIMESTAMP;
+// Claude said to use `extern`, but that breaks everything.
+//extern std::time_t TIMESTAMP;
 
 std::string TIME_FORMAT = "%Y-%m-%d %H:%M:%S";
 
@@ -64,10 +66,13 @@ protected:
   // See here for discussion of captures in esphome: https://github.com/esphome/issues/issues/249
   bool(*target_action_fptr)();
   
+  // TODO: Can/should we move this to dynamic_cron_esphome.h, as it has no use in this core file?
+  bool          setup_complete;
+
   // These default fields are what hold the user input from the yaml config in esphome.
   // So if user runtime settings get lost or botched, their setup will always revert
   // to their configured defaults. See the setXxxDefault() methods below.
-  bool          setup_complete;
+  
   String        crontab_default;
   bool          bypass_default;
   bool          remember_next_default;
@@ -533,7 +538,7 @@ protected:
   //       them if necessary for debugging.
   //
   bool timeIsValid(std::time_t now = std::time(NULL)) {
-    //LOGV("timeIsValid() now: %li, TIMESTAMP: %li", now, TIMESTAMP);
+    LOGV("timeIsValid() now: %li, TIMESTAMP: %li", now, TIMESTAMP);
     
     // We previously tested against esptime only.
     //return id(esptime).now().is_valid();
@@ -542,7 +547,7 @@ protected:
     // Gets time independent of esp functions.
     struct tm now_tm;
     now_tm = *localtime(&now);
-    //LOGV("now_tm.tm_year: %i", now_tm.tm_year);
+    LOGV("now_tm.tm_year: %i", now_tm.tm_year);
     
     // 1970 is the start of 'epoch' time.
     // tm_year gives us years sine 1900. 

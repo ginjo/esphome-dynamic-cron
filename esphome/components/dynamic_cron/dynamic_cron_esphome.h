@@ -88,15 +88,18 @@ public:
 
   // Esphome Component overrides
   void setup() override {
+    printVersion();
+    LOGV("About to call timeIsValid() from Schedule.setup()");
+
     if (timeIsValid() && !setup_complete) {
-      //initializePrefs();
       loadPrefs();
+
+      setup_complete = true;
+
       LOGV("Setup completed for '%s' %s %s", schedule_name.c_str(), schedule_id.c_str(), id_hash.c_str());
       if (! timeIsValid(cronnext)) {
         setCronNext();
       }
-      
-      setup_complete = true;
     }
   }
   
@@ -168,7 +171,10 @@ protected:
     Schedule*     schedule;
     
     std::time_t   initialized;  // TIMESTAMP of firmware in seconds-since-epoch at compile time (from __init__.py).
-                                // I think TIMESTAMP is hardcoded in python at firmware compile time.
+                                // TIMESTAMP is hardcoded in python at firmware compile time.
+                                // TIMESTAMP is declared in dynamic_cron.h
+                                // TIMESTAMP is defined in main.cpp at the top.
+                                // TIMESTAMP is assigned in main.cpp in the setup() function.
     std::string   crontab;
     bool          remember_next;
     bool          bypass;
@@ -294,7 +300,8 @@ protected:
   
   // Loads persistent data from esp32 NVS.
   SchedulePrefs loadPrefs() {
-    
+    LOGV("Beginning loadPrefs()");
+
     SchedulePrefs prefs = SchedulePrefs(this);
     
     crontab = prefs.crontab;
@@ -368,13 +375,18 @@ protected:
   //       them if necessary for debugging.
   //
   bool timeIsValid(std::time_t now = std::time(NULL)) {
+    LOGV("Schedule::timeIsValid() calling ESPTime::from_epoch_local()");
     ESPTime esp_time = ESPTime::from_epoch_local(now);
+
+    LOGV("Schedule::timeIsValid() calling esp_time.is_valid()");
     bool rslt_esp = esp_time.is_valid();
+
+    LOGV("Schedule::timeIsValid() calling ScheduleCore::timeIsValid()");
     bool rslt_parent = ScheduleCore::timeIsValid(now);
     bool rslt_final = rslt_parent && rslt_esp;
     
     if (rslt_final) {
-      // LOGV("timeIsValid() using additional check with ESPTime: %d", rslt_final);
+      LOGV("timeIsValid() using additional check with ESPTime: %d", rslt_final);
     } else {
       LOGV("timeIsValid() using additional check with ESPTime: %d", rslt_final);
     }
@@ -385,7 +397,8 @@ protected:
 }; // Schedule class
 
 
-// ESPHOME ENTITY COMPONENTS
+
+// ESPHOME ENTITY SUB-COMPONENTS
 
 class BypassSwitch : public switch_::Switch, public Component, public LoggerLocal<BypassSwitch> {
 public:
@@ -403,11 +416,12 @@ public:
     set_disabled_by_default(false);
     set_icon("mdi:timer-off-outline");
     set_restore_mode(switch_::SWITCH_RESTORE_DISABLED);
-    set_component_source("dynamic_cron");
+    //set_component_source("dynamic_cron");
     //App.register_switch(this);
-    //App.register_component(this);
+    App.register_component(this);
     schedule->bypass_switch = this;
     //schedule_name = schedule->schedule_name; // schedule_name field is inherited from LoggerLocal.
+    LOGV("Initialized bypass_switch '%s'", schedule->getName().c_str());
   }
   
   void setup() {
@@ -446,14 +460,14 @@ public:
     //set_name("Remember Next");
     //set_object_id("remember_next_switch_");
     set_disabled_by_default(false);
-    //set_icon("mdi:timer-off-outline");
     set_icon("mdi:memory");
     set_restore_mode(switch_::SWITCH_RESTORE_DISABLED);
-    set_component_source("dynamic_cron");
-    App.register_switch(this);
+    //set_component_source("dynamic_cron");
+    //App.register_switch(this);
     App.register_component(this);
     schedule->remember_next_switch = this;
     //schedule_name = schedule->schedule_name; // schedule_name field is inherited from LoggerLocal.
+    LOGV("Initialized remember_next_switch '%s'", schedule->getName().c_str());
   }
   
   void setup() {
@@ -493,11 +507,12 @@ public:
     //set_object_id("cron_next_sensor_");
     //set_disabled_by_default(false);
     set_icon("mdi:timer-outline");
-    set_component_source("dynamic_cron");
-    App.register_text_sensor(this);
+    //set_component_source("dynamic_cron");
+    //App.register_text_sensor(this);
     App.register_component(this);
     schedule->cron_next_sensor = this;
     //schedule_name = schedule->schedule_name; // schedule_name field is inherited from LoggerLocal.
+    LOGV("Initialized cron_next_sensor '%s'", schedule->getName().c_str());
   }
   
   void setup() {
@@ -536,11 +551,12 @@ public:
     traits.set_min_length(0);
     traits.set_max_length(255);
     traits.set_mode(text::TEXT_MODE_TEXT);
-    set_component_source("dynamic_cron");
-    App.register_text(this);
+    //set_component_source("dynamic_cron");
+    //App.register_text(this);
     App.register_component(this);
     schedule->crontab_text_field = this;
     //schedule_name = schedule->schedule_name; // schedule_name field is inherited from LoggerLocal.
+    LOGV("Initialized crontab_text_field '%s'", schedule->getName().c_str());
   }
   
   void setup() {
