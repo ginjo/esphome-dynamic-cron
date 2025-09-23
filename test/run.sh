@@ -73,5 +73,8 @@ pio test --without-uploading -c test/platformio.ini ${@--e native}
 #       Platformio will overwrite the esphom-generated .platformio directory, and tests will fail.
 #
 # TODO: Create a test esphome project here within this component's directory.
-
+#
+# See here for WokWi online esp32 simulator, allowing uploaded firmware runs.
+#   https://wokwi.com/projects/305457271083631168
+#   https://docs.wokwi.com/guides/esp32
 

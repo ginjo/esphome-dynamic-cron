@@ -88,9 +88,10 @@ public:
 
   // Esphome Component overrides
   void setup() override {
-    printVersion();
-    LOGV("About to call timeIsValid() from Schedule.setup()");
-
+  	// Disable for production
+		//printVersion();
+		//LOGV("About to call timeIsValid() in Schedule.setup()");
+		
     if (timeIsValid() && !setup_complete) {
       loadPrefs();
 
@@ -110,7 +111,7 @@ public:
     double seconds_since_last_save      = difftime(now, save_prefs_previous_time);
   
     if (setup_complete && timeIsValid()) {
-      //LOGV("Looping: %li", now);
+      //LOGV("Looping: %lld", (long long)now);
       if (seconds_since_last_cron_loop > cron_loop_interval) {
         cronLoop();
         cron_loop_previous_time = std::time(NULL);
@@ -172,8 +173,8 @@ protected:
     
     std::time_t   initialized;  // TIMESTAMP of firmware in seconds-since-epoch at compile time (from __init__.py).
                                 // TIMESTAMP is hardcoded in python at firmware compile time.
-                                // TIMESTAMP is declared in dynamic_cron.h
-                                // TIMESTAMP is defined in main.cpp at the top.
+                                // TIMESTAMP is declared in dynamic_cron.h, using 'inline'.
+                                // TIMESTAMP is defined in main.cpp at the top (not any more).
                                 // TIMESTAMP is assigned in main.cpp in the setup() function.
     std::string   crontab;
     bool          remember_next;
@@ -206,10 +207,10 @@ protected:
       // Initializes namespace timestamp, if not already done.
       
       if (! api.isKey("initialized")) {
-        LOGI("Initializing prefs namespace %s %s with stamp '%li'",
+        LOGI("Initializing prefs namespace %s %s with stamp '%lld'",
           schedule->schedule_id.c_str(),
           schedule->id_hash.c_str(),
-          TIMESTAMP
+          (long long)TIMESTAMP
         );
         
         // Sets the 'initialized' preference field to TIMESTAMP (seconds, from __init__.py).
@@ -233,10 +234,10 @@ protected:
       if (force == true || schedule->clear_prefs == true && TIMESTAMP != 0 && initialized != TIMESTAMP) {
         rslt = api.clear(); // && api.putLong("initialized", TIMESTAMP);
         if (rslt) {
-          LOGI("Re-initialized prefs namespace %s %s with stamp '%li'",
+          LOGI("Re-initialized prefs namespace %s %s with stamp '%lld'",
             schedule->schedule_id.c_str(),
             schedule->id_hash.c_str(),
-            TIMESTAMP
+            (long long)TIMESTAMP
           );
         }
       }
@@ -246,10 +247,10 @@ protected:
         api.putLong("initialized", TIMESTAMP);
         initialized = api.getLong("initialized", 0);
         
-        LOGI("Updated prefs namespace %s %s with stamp '%li'",
+        LOGI("Updated prefs namespace %s %s with stamp '%lld'",
           schedule->schedule_id.c_str(),
           schedule->id_hash.c_str(),
-          initialized
+          (long long)initialized
         );
       }
             
@@ -316,7 +317,7 @@ protected:
 
     LOGD("Loaded crontab: %s", crontab.c_str());
     LOGD("Loaded remember_next: %d", remember_next);
-    LOGD("Loaded cronnext: %li (%s)", cronnext, timeToString(cronnext).c_str());
+    LOGD("Loaded cronnext: %lld (%s)", (long long)cronnext, timeToString(cronnext).c_str());
     LOGD("Loaded bypass: %d", bypass);
     
     return prefs;
@@ -352,7 +353,7 @@ protected:
       }
 
       if (cronnext_changed) {
-        LOGI("Saving cronnext to prefs: %li", cronnext);
+        LOGI("Saving cronnext to prefs: %lld", (long long)cronnext);
         api.putLong("cronnext", cronnext);
       }
 
@@ -375,21 +376,22 @@ protected:
   //       them if necessary for debugging.
   //
   bool timeIsValid(std::time_t now = std::time(NULL)) {
-    LOGV("Schedule::timeIsValid() calling ESPTime::from_epoch_local()");
+    //LOGV("Schedule::timeIsValid() calling ESPTime::from_epoch_local()");
     ESPTime esp_time = ESPTime::from_epoch_local(now);
 
-    LOGV("Schedule::timeIsValid() calling esp_time.is_valid()");
+    //LOGV("Schedule::timeIsValid() calling esp_time.is_valid()");
     bool rslt_esp = esp_time.is_valid();
 
-    LOGV("Schedule::timeIsValid() calling ScheduleCore::timeIsValid()");
+    //LOGV("Schedule::timeIsValid() calling ScheduleCore::timeIsValid()");
     bool rslt_parent = ScheduleCore::timeIsValid(now);
     bool rslt_final = rslt_parent && rslt_esp;
     
-    if (rslt_final) {
-      LOGV("timeIsValid() using additional check with ESPTime: %d", rslt_final);
-    } else {
-      LOGV("timeIsValid() using additional check with ESPTime: %d", rslt_final);
-    }
+    // What is this for?
+		//     if (rslt_final) {
+		//       LOGV("timeIsValid() using additional check with ESPTime: %d", rslt_final);
+		//     } else {
+		//       LOGV("timeIsValid() using additional check with ESPTime: %d", rslt_final);
+		//     }
     
     return rslt_final;
   }
@@ -424,7 +426,7 @@ public:
     LOGV("Initialized bypass_switch '%s'", schedule->getName().c_str());
   }
   
-  void setup() {
+  void setup() override {
     LOGV("get_object_id(): %s", get_object_id().c_str());
   }
   
@@ -470,7 +472,7 @@ public:
     LOGV("Initialized remember_next_switch '%s'", schedule->getName().c_str());
   }
   
-  void setup() {
+  void setup() override {
     LOGV("get_object_id(): %s", get_object_id().c_str());
   }
   
@@ -515,7 +517,7 @@ public:
     LOGV("Initialized cron_next_sensor '%s'", schedule->getName().c_str());
   }
   
-  void setup() {
+  void setup() override {
     LOGV("get_object_id(): %s", get_object_id().c_str());
   }
   
@@ -559,7 +561,7 @@ public:
     LOGV("Initialized crontab_text_field '%s'", schedule->getName().c_str());
   }
   
-  void setup() {
+  void setup() override {
     LOGV("get_object_id(): %s", get_object_id().c_str());
   }
   

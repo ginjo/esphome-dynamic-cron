@@ -70,30 +70,19 @@ CONFIG_SCHEMA = cv.Schema({
 }).extend(cv.COMPONENT_SCHEMA)
 
 
+### cg.add() puts code at top of main.cpp setup() function.
+### cg.add_global() puts code at top of main.cpp.
+
 # This is a timestamp of when the firmware was built. We use it to make decisions
 # during the Preferences initialization functions during the first-boot after flashing.
 # Since we only need the timestamp once, we do it here, outside of the to_code() method.
 # NOTE: This is number seconds since epoch. We round() to chop off the decimal places.
 #
-# global_build_timestamp = cg.RawStatement(f'uint32_t BUILD_TIMESTAMP = {round(time())};\n')
-# cg.add_global(global_build_timestamp)
-
-# namespaced_timestamp = cg.RawStatement(f'esphome::dynamic_cron::TIMESTAMP = BUILD_TIMESTAMP;\n')
-# cg.add(namespaced_timestamp)
-
-# Defines at top of main.cpp.
-define_global_timestamp = cg.RawStatement(
-    'namespace esphome {\n' +
-    '  namespace dynamic_cron {\n' +
-    '    std::time_t TIMESTAMP;\n' +
-    '  }\n' +
-    '}\n'
-)
-cg.add_global(define_global_timestamp)
-
-# Assigns from within main.cpp setup().
 assign_global_timestamp = cg.RawStatement(f'esphome::dynamic_cron::TIMESTAMP = {round(time())};\n')
 cg.add(assign_global_timestamp)
+
+print_version = cg.RawStatement(f'esphome::dynamic_cron::printVersion;\n')
+cg.add(print_version)
 
 
 # This gets called for each item in the dynamic_cron:[] array in the yaml config.

@@ -24,15 +24,15 @@ namespace dynamic_cron {
 
 // This is the timestamp of the firmware build.
 // This will be set in python and is seconds from epoch.
-extern std::time_t TIMESTAMP;
-// Claude said to use `extern`, but that breaks everything.
+//std::time_t TIMESTAMP;
 //extern std::time_t TIMESTAMP;
+inline std::time_t TIMESTAMP = 1234567890;
 
-std::string TIME_FORMAT = "%Y-%m-%d %H:%M:%S";
+inline std::string TIME_FORMAT = "%Y-%m-%d %H:%M:%S";
 
 void printVersion() {
   //LoggerLocal<void>::SLOGI("dynamic_cron", "version: %s, firmware build: %li", VERSION.c_str(), TIMESTAMP);
-  SLOGI("dynamic_cron", "version: %s, firmware build: %li", VERSION.c_str(), TIMESTAMP);
+  SLOGI("dynamic_cron", "version: %s, firmware build: %lld", VERSION.c_str(), (long long)TIMESTAMP);
 }
 
 
@@ -205,7 +205,7 @@ public:
       this_time_t = cronNextCalc(_crontab, this_time_t);
       this_time_s = timeToString(this_time_t);
       out.insert({this_time_t, this_time_s});
-      LOGV("cronNextMap(...) i: %i, this_time_t: %li, this_time_s: %s", i, this_time_t, this_time_s.c_str());
+      LOGV("cronNextMap(...) i: %i, this_time_t: %lld, this_time_s: %s", i, (long long)this_time_t, this_time_s.c_str());
     }
 
     return out;
@@ -252,25 +252,25 @@ public:
         cronnext = cronNextCalc();
       }
       
-      LOGI("Set cronnext [%li, %s]",
-            cronnext,
+      LOGI("Set cronnext [%lld, %s]",
+            (long long)cronnext,
             timeToString(cronnext).c_str()
       );
-      LOGD("Set cronnext vars, crontab: %s, bypass: %d, remember: %d, now: %li, %s",
+      LOGD("Set cronnext vars, crontab: %s, bypass: %d, remember: %d, now: %lld, %s",
             crontab.c_str(),
             bypass,
             remember_next,
-            timeNow(),
+            (long long)timeNow(),
             timeToString(timeNow()).c_str()
       );
     }
     
     else {
-      LOGW("Set cronnext failed, crontab: %s, bypass: %d, remember: %d, now: %li",
+      LOGW("Set cronnext failed, crontab: %s, bypass: %d, remember: %d, now: %lld",
             crontab.c_str(),
             bypass,
             remember_next,
-            timeNow()
+            (long long)timeNow()
       );
     }
   }
@@ -299,14 +299,14 @@ public:
     ){
       cronnext = input;
       
-      LOGI("Setting cronnext with input [%li, %s]",
-        input,
+      LOGI("Setting cronnext with input [%lld, %s]",
+        (long long)input,
         timeToString(input).c_str()
       );
     }
     else {
-      LOGW("setCronNext(user-input) invalid input or current-time [%li, %s]",
-        input,
+      LOGW("setCronNext(user-input) invalid input or current-time [%lld, %s]",
+        (long long)input,
         timeToString(input).c_str()
       );
       
@@ -453,7 +453,7 @@ public:
     time_t t_time = mktime(&tm_struct);
   
     // Log the time_t value
-    LOGV("stringToTime() parsed time '%s' in seconds since epoch: %li", input.c_str(), t_time);
+    LOGV("stringToTime() parsed time '%s' in seconds since epoch: %lld", input.c_str(), (long long)t_time);
     // Log the reverse operation.
     LOGV("stringToTime() reverse operation: %s", timeToString(t_time).c_str());
   
@@ -538,7 +538,8 @@ protected:
   //       them if necessary for debugging.
   //
   bool timeIsValid(std::time_t now = std::time(NULL)) {
-    LOGV("timeIsValid() now: %li, TIMESTAMP: %li", now, TIMESTAMP);
+		// Disable this for production, otherwise will spit out huge amounts of log.
+    //LOGV("timeIsValid() now: %lld, TIMESTAMP: %lld", (long long)now, (long long)TIMESTAMP);
     
     // We previously tested against esptime only.
     //return id(esptime).now().is_valid();
@@ -547,8 +548,7 @@ protected:
     // Gets time independent of esp functions.
     struct tm now_tm;
     now_tm = *localtime(&now);
-    LOGV("now_tm.tm_year: %i", now_tm.tm_year);
-    
+
     // 1970 is the start of 'epoch' time.
     // tm_year gives us years sine 1900. 
     bool rslt = (
@@ -557,8 +557,14 @@ protected:
       std::difftime(now, TIMESTAMP) >= 0
     );
     
+    // Disable this for production, otherwise will spit out huge amounts of log.
+    //LOGV("4-timeIsValid() now: %lld, TIMESTAMP: %lld", (long long)now, (long long)TIMESTAMP);
+    
     if (! rslt) {
-      LOGV("timeIsValid() FALSE with [%li, %s]", now, timeToString(now).c_str());
+      LOGV("timeIsValid() FALSE with [%lld, %s]", (long long)now, timeToString(now).c_str());
+    } else {
+    	// Disable this for production, otherwise will spit out huge amounts of log.
+    	//LOGV("timeIsValid() TRUE with [%lld, %s]", (long long)now, timeToString(now).c_str());
     };
     
     return (rslt);
