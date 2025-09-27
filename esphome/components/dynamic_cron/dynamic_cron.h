@@ -31,7 +31,7 @@ inline std::time_t TIMESTAMP = 1234567890;
 inline std::string TIME_FORMAT = "%Y-%m-%d %H:%M:%S";
 
 void printVersion() {
-  //LoggerLocal<void>::SLOGI("dynamic_cron", "version: %s, firmware build: %li", VERSION.c_str(), TIMESTAMP);
+  //LoggerLocal<void>::SLOGI("dynamic_cron", "version: %s, firmware build: %lld", VERSION.c_str(), (long long)TIMESTAMP);
   SLOGI("dynamic_cron", "version: %s, firmware build: %lld", VERSION.c_str(), (long long)TIMESTAMP);
 }
 
@@ -579,7 +579,9 @@ protected:
   }
 
 
-  // Returns sorted vector of next time_t values for given vector-of-crontab-strings.
+  // Returns sorted vector of next time_t values for given vector-of-crontab-strings,
+  // with one soonest next-time value from each crontab expresion.
+  // The first value in the returned vector is soonest next-time of all the given crontab expressions.
   //
   std::vector<std::time_t> vectorOfNext(std::vector<std::string> crontabs, std::time_t ref_time = 0) {
     if (ref_time == 0) { ref_time = timeNow(); }

@@ -23,6 +23,7 @@ const char *LOGTAG = "dynamic_cron";
 
 
 // Top level "free" (but namespaced) log functions.
+// These will work with or without esphome logging functions loaded.
 //
 #if defined(IS_NATIVE) && IS_NATIVE == 1
   #define CREATE_LOG_FUNC_FREE(level) \
@@ -51,7 +52,13 @@ CREATE_LOG_FUNC_FREE(V)
 
 
 // Templated logger class so we can access the derived instances from within it.
+// These LOGx methods add contextual boilerplate and then call SLOGx function.
+//
 // If you need to call a static method on a templated class, you can do: LoggerLocal<void>::someMethod().
+//
+// Inherit this class wherever you need these LOGx methods.
+// ! Wherever you inherit this class, make sure to call the LoggerLocal(_name) constructor.
+// ! You must define a pointer *schedule that points to the relevant schedule (or schedule-core) instance.
 //
 template <typename Derived> 
 class LoggerLocal {
@@ -61,18 +68,6 @@ public:
   Derived* derived() {
     return static_cast<Derived*>(this);
   }
-
-  // template <typename AbsClass>
-  // LoggerLocal(std::string _name, AbsClass* _schedule) :
-  //   schedule_name(_name)
-  // { 
-  //   std::cout << _schedule->schedule_name.c_str(); // fails!
-  //   //std::cout << schedule_name.c_str();  // works!
-  //   //schedule_name = _schedule->schedule_name; // fails!
-  // }
-  
-  // Wherever you inherit this class, make sure to call the LoggerLocal(_name)
-  // constructor.
   
   // We created our own LOGx functions, since we need to access them independently
   // from esphome during test runs. We also wanted to add some boilerplate to
@@ -85,14 +80,14 @@ public:
   //
   // These methds add boilerplate tags-and-schedule-name from the schedule instance, to the log line.
   //
-  // You must define a pointer *schedule that points to the relevant schedule (or schedule-core) instance.
-  //
   // These functions are created with a Macro '#define' and each line of the definition
   // MUST be terminated with an escaped literal newline '\<newline>'.
   // Use the stringizing character '#' to resolve the macro vars to a string of their name.
   // NOTE: There's a lot of fancy stuff going on in this macro definition with preprocessor directives.
   //
-  
+  // NOTE: I think the steps within each of these conditions are currently identical.
+  //       Do we still need the IS_NATIVE condition here?
+  //
   #if defined(IS_NATIVE) && IS_NATIVE == 1
     #define CREATE_LOG_FUNC(level) \
       template<typename... Args> \

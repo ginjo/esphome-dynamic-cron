@@ -21,6 +21,8 @@ CONF_CRONTAB       = 'crontab'
 CONF_CLEAR_PREFS   = 'clear_prefs'
 CONF_TIME_FORMAT   = 'time_format'
 
+CONF_BYPASS_SWITCH = "bypass_switch"
+
 cg.add_build_flag("-std=gnu++17")
 cg.add_build_flag("-fexceptions")
 cg.add_platformio_option("build_unflags", ["-fno-exceptions", "-std=gnu++11"])
@@ -67,6 +69,12 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_CRONTAB, default=""):             cv.string,
     cv.Optional(CONF_CLEAR_PREFS, default=False):      cv.boolean,
     cv.Optional(CONF_TIME_FORMAT, default=""):         cv.string,
+    
+    cv.Optional(CONF_BYPASS_SWITCH,
+    						default={ CONF_ID: "test",}
+    ):switch.SWITCH_SCHEMA.extend({
+    	cv.GenerateID(): cv.declare_id(BypassSwitch)
+    }),
 }).extend(cv.COMPONENT_SCHEMA)
 
 
@@ -88,6 +96,7 @@ cg.add(print_version)
 # This gets called for each item in the dynamic_cron:[] array in the yaml config.
 #async def to_code(config):
 # We use this form so cg.declare_id()() will work.
+# See for docs: https://github.com/esphome/esphome/blob/dev/esphome/cpp_generator.py
 async def to_code(config):
     
     name = str(config.get(CONF_NAME, config.get(CONF_ID)))
@@ -106,6 +115,8 @@ async def to_code(config):
         config[CONF_LAMBDA], [], '', return_type=bool
     )
     
+    # Creates component class instance.
+    # See for docs: https://github.com/esphome/esphome/blob/b7b2f3e61cabfcd71dbe891e8affdbd2e5128e9e/esphome/core/__init__.py#L321
     var = cg.new_Pvariable(config[CONF_ID], name, id_, lamb)
     await cg.register_component(var, config)
     
@@ -117,6 +128,9 @@ async def to_code(config):
     cg.add(var.setTimeFormatDefault(config[CONF_TIME_FORMAT]))
     
     
+    ### OK, see here for possible solution to registering sub-components - using proper cv:
+    ###   https://github.com/alextrical/ESPHome-Vent-Axia-Sentinel-Kinetic/blob/main/components/vent_axia_sentinel_kinetic/__init__.py
+    
     # bypass_switch = cg.RawStatement(
     #   f'esphome::dynamic_cron::BypassSwitch *bypass_switch_{id_} = new esphome::dynamic_cron::BypassSwitch({id_});\n' +
     #   f'bypass_switch_{id_}->set_name("{name} disable");\n' +
@@ -124,15 +138,23 @@ async def to_code(config):
     # )
     # cg.add(bypass_switch)
     #
-    # bypass_switch_id = BypassSwitch.new(f"bypass_switch_{id_}")
-    # bypass_switch    = cg.new_Pvariable(bypass_switch_id, id_)
-    # await cg.register_component(bypass_switch, {})
+    #bypass_switch_id = BypassSwitch.new(f"bypass_switch_{id_}")
+    #bypass_switch_new = switch.new_switch(bypass_switch_id)
+    #bypass_switch = cg.new_Pvariable(bypass_switch_id, var)
+    #await cg.register_component(bypass_switch, {})
     # await switch.register_switch(bypass_switch, {})
     # cg.add(bypass_switch.set_name(f"{name} disable"))
     #
-    cg.add(cg.RawStatement(f'esphome::dynamic_cron::BypassSwitch *bypass_switch_{id_} = new esphome::dynamic_cron::BypassSwitch({id_});'))
+    bypass_switch = await switch.new_switch(config[CONF_BYPASS_SWITCH], f'bypass_switch_{id_}')
+    cg.add(switch.register_switch(bypass_switch, config[CONF_BYPASS_SWITCH]))
+    #
+    #cg.add(cg.RawStatement(f'esphome::dynamic_cron::BypassSwitch *bypass_switch_{id_} = new esphome::dynamic_cron::BypassSwitch({id_});'))
     cg.add(cg.RawStatement(f'bypass_switch_{id_}->set_name("{name} disable");'))
     cg.add(cg.RawStatement(f'bypass_switch_{id_}->set_object_id("bypass_switch_{id_}");'))
+    #cg.add(cg.RawStatement(f'App.register_component(bypass_switch_{id_});'))
+    #cg.add(cg.App.register_switch(f'bypass_switch_{id_}', {}))
+    #await cg.register_component(bypass_switch, config)
+    #await cg.register_switch(f'bypass_switch_{id_}')
     # cg.add(cg.RawStatement(f'{var}->set_bypass_switch(bypass_switch_{id_});'))
     # cg.add(cg.RawStatement(f'bypass_switch_{id_}->set_parent({var});'))
     
@@ -153,6 +175,7 @@ async def to_code(config):
     cg.add(cg.RawStatement(f'esphome::dynamic_cron::RememberNextSwitch *remember_next_switch_{id_} = new esphome::dynamic_cron::RememberNextSwitch({id_});'))
     cg.add(cg.RawStatement(f'remember_next_switch_{id_}->set_name("{name} remember next");'))
     cg.add(cg.RawStatement(f'remember_next_switch_{id_}->set_object_id("remember_next_switch_{id_}");'))
+    cg.add(cg.RawStatement(f'App.register_component(remember_next_switch_{id_});'))
     # cg.add(cg.RawStatement(f'{var}->set_remember_next_switch(remember_next_switch_{id_});'))
     # cg.add(cg.RawStatement(f'remember_next_switch_{id_}->set_parent({var});'))
 
@@ -173,6 +196,7 @@ async def to_code(config):
     cg.add(cg.RawStatement(f'esphome::dynamic_cron::CronNextSensor *cron_next_sensor_{id_} = new esphome::dynamic_cron::CronNextSensor({id_});'))
     cg.add(cg.RawStatement(f'cron_next_sensor_{id_}->set_name("{name} next run");'))
     cg.add(cg.RawStatement(f'cron_next_sensor_{id_}->set_object_id("cron_next_sensor_{id_}");'))
+    cg.add(cg.RawStatement(f'App.register_component(cron_next_sensor_{id_});'))
     # cg.add(cg.RawStatement(f'{var}->set_cron_next_sensor(cron_next_sensor_{id_});'))
     # cg.add(cg.RawStatement(f'cron_next_sensor_{id_}->set_parent({var});'))
     
@@ -193,6 +217,7 @@ async def to_code(config):
     cg.add(cg.RawStatement(f'esphome::dynamic_cron::CrontabTextField *crontab_text_field_{id_} = new esphome::dynamic_cron::CrontabTextField({id_});'))
     cg.add(cg.RawStatement(f'crontab_text_field_{id_}->set_name("{name} crontab");'))
     cg.add(cg.RawStatement(f'crontab_text_field_{id_}->set_object_id("crontab_text_field_{id_}");'))
+    cg.add(cg.RawStatement(f'App.register_component(crontab_text_field_{id_});'))
     # cg.add(cg.RawStatement(f'{var}->set_crontab_text_field(crontab_text_field_{id_});'))
     # cg.add(cg.RawStatement(f'crontab_text_field_{id_}->set_parent({var});'))
 

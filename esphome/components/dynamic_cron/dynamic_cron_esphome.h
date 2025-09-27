@@ -8,7 +8,9 @@
 //       Note that the optional display of the multiple cronnext values is NOT incorrect
 //       at any point during this issue.
 //       It is not known if the actual next-start-time is incorrect, or if this is a display issue.
-
+//
+// NOTE: ESPHome is now using esp-idf v5, which uses 64-bit long-long fot time_t.
+//       This is different from esp-idf v4, which used 32-bit long.
 
 #pragma once
 
@@ -124,7 +126,10 @@ public:
     }
     
     else {
-      setup();
+    	if (seconds_since_last_cron_loop > cron_loop_interval) {
+      	setup();
+      	cron_loop_previous_time = std::time(NULL);
+      }
     }
   }
   
@@ -183,10 +188,7 @@ protected:
     
     SchedulePrefs(Schedule* _schedule) :
       schedule(_schedule)
-      //LoggerLocal(_schedule->schedule_name)
     {
-      //const char *idhash = schedule->id_hash.c_str();
-      //schedule_name = schedule->schedule_name; // schedule_name field is inherited from LoggerLocal.
       initialize();
       load();
     }
@@ -214,7 +216,7 @@ protected:
         );
         
         // Sets the 'initialized' preference field to TIMESTAMP (seconds, from __init__.py).
-        api.putLong("initialized", TIMESTAMP);
+        api.putLong64("initialized", TIMESTAMP);
         
         size_t number_free_entries = api.freeEntries();
         LOGD("There are %u free entries available in the namespace table %s",
@@ -224,7 +226,7 @@ protected:
       }
       
       // Retrieves the preference 'initialized' field.
-      initialized = api.getLong("initialized", 0);
+      initialized = api.getLong64("initialized", 0);
 
       // Clears preferences namespace, if conditions allow.
       //
@@ -232,7 +234,7 @@ protected:
       //
       bool rslt = false;
       if (force == true || schedule->clear_prefs == true && TIMESTAMP != 0 && initialized != TIMESTAMP) {
-        rslt = api.clear(); // && api.putLong("initialized", TIMESTAMP);
+        rslt = api.clear(); // && api.putLong64("initialized", TIMESTAMP);
         if (rslt) {
           LOGI("Re-initialized prefs namespace %s %s with stamp '%lld'",
             schedule->schedule_id.c_str(),
@@ -244,8 +246,8 @@ protected:
       
       // Updates 'initialized' if different from TIMESTAMP.
       if (TIMESTAMP != 0 && initialized != TIMESTAMP) {
-        api.putLong("initialized", TIMESTAMP);
-        initialized = api.getLong("initialized", 0);
+        api.putLong64("initialized", TIMESTAMP);
+        initialized = api.getLong64("initialized", 0);
         
         LOGI("Updated prefs namespace %s %s with stamp '%lld'",
           schedule->schedule_id.c_str(),
@@ -269,7 +271,7 @@ protected:
       }
       
       if (! api.isKey("cronnext")) {
-        api.putLong("cronnext", 0);
+        api.putLong64("cronnext", 0);
       }
 
       api.end();
@@ -282,17 +284,17 @@ protected:
       LOGV("Opening prefs %s for reading", schedule->id_hash.c_str());
       api.begin(schedule->id_hash.c_str(), true); // open prefs read-only
       
-      LOGV("Loading crontab from prefs");
+      LOGV("Reading crontab from prefs");
       crontab = api.getString("crontab", schedule->crontab_default).c_str();
 
-      LOGV("Loading remember_next from prefs");
+      LOGV("Reading remember_next from prefs");
       remember_next = api.getBool("remember_next", schedule->remember_next_default);
 
-      LOGV("Loading bypass from prefs");
+      LOGV("Reading bypass from prefs");
       bypass = api.getBool("bypass", schedule->bypass_default);
 
-      LOGV("Loading cronnext from prefs");
-      cronnext = (std::time_t) api.getLong("cronnext", 0);
+      LOGV("Reading cronnext from prefs");
+      cronnext = (std::time_t) api.getLong64("cronnext", 0);
 
       api.end();
     }
@@ -354,7 +356,7 @@ protected:
 
       if (cronnext_changed) {
         LOGI("Saving cronnext to prefs: %lld", (long long)cronnext);
-        api.putLong("cronnext", cronnext);
+        api.putLong64("cronnext", cronnext);
       }
 
       if (bypass_changed) {
@@ -395,6 +397,30 @@ protected:
     
     return rslt_final;
   }
+  
+  bool last_bypass_state = 0;
+  
+  void pollBypass() {
+    bool new_state = getBypass();
+    
+    if (new_state != last_bypass_state) {
+      bypass_switch->state = new_state;
+      last_state = new_state;
+      publish_state(new_state);
+    }
+  }
+  
+  bool last_remember_next_state = 0;
+  
+    void loop() override {
+    bool new_state = getRememberNext();
+    
+    if (new_state != last_remember_next_state) {
+      remember_next_switch->state = new_state;
+      last_state = new_state;
+      publish_state(new_state);
+    }
+  }
 
 }; // Schedule class
 
@@ -411,22 +437,18 @@ public:
   explicit BypassSwitch(Schedule* _schedule) :
     schedule(_schedule),
     last_state(0)
-    //LoggerLocal(_schedule->schedule_name)
   {
-    //set_name("Disable");
-    //set_object_id("disable_schedule_switch_");
-    set_disabled_by_default(false);
-    set_icon("mdi:timer-off-outline");
-    set_restore_mode(switch_::SWITCH_RESTORE_DISABLED);
-    //set_component_source("dynamic_cron");
-    //App.register_switch(this);
-    App.register_component(this);
+		//     set_disabled_by_default(false);
+		//     set_icon("mdi:timer-off-outline");
+		//     set_restore_mode(switch_::SWITCH_RESTORE_DISABLED);
     schedule->bypass_switch = this;
-    //schedule_name = schedule->schedule_name; // schedule_name field is inherited from LoggerLocal.
     LOGV("Initialized bypass_switch '%s'", schedule->getName().c_str());
   }
   
   void setup() override {
+    set_disabled_by_default(false);
+    set_icon("mdi:timer-off-outline");
+    set_restore_mode(switch_::SWITCH_RESTORE_DISABLED);
     LOGV("get_object_id(): %s", get_object_id().c_str());
   }
   
@@ -457,22 +479,18 @@ public:
   RememberNextSwitch(Schedule* _schedule) :
     schedule(_schedule),
     last_state(0)
-    //LoggerLocal(_schedule->schedule_name)
   {
-    //set_name("Remember Next");
-    //set_object_id("remember_next_switch_");
-    set_disabled_by_default(false);
-    set_icon("mdi:memory");
-    set_restore_mode(switch_::SWITCH_RESTORE_DISABLED);
-    //set_component_source("dynamic_cron");
-    //App.register_switch(this);
-    App.register_component(this);
+		//     set_disabled_by_default(false);
+		//     set_icon("mdi:memory");
+		//     set_restore_mode(switch_::SWITCH_RESTORE_DISABLED);
     schedule->remember_next_switch = this;
-    //schedule_name = schedule->schedule_name; // schedule_name field is inherited from LoggerLocal.
     LOGV("Initialized remember_next_switch '%s'", schedule->getName().c_str());
   }
   
   void setup() override {
+  	set_disabled_by_default(false);
+    set_icon("mdi:memory");
+    set_restore_mode(switch_::SWITCH_RESTORE_DISABLED);
     LOGV("get_object_id(): %s", get_object_id().c_str());
   }
   
@@ -503,21 +521,16 @@ public:
   CronNextSensor(Schedule* _schedule) :
     schedule(_schedule),
     last_state("")
-    //LoggerLocal(_schedule->schedule_name)
   {
-    //set_name("Next Run");
-    //set_object_id("cron_next_sensor_");
-    //set_disabled_by_default(false);
-    set_icon("mdi:timer-outline");
-    //set_component_source("dynamic_cron");
-    //App.register_text_sensor(this);
-    App.register_component(this);
+		//     //set_disabled_by_default(false);
+		//     set_icon("mdi:timer-outline");
     schedule->cron_next_sensor = this;
-    //schedule_name = schedule->schedule_name; // schedule_name field is inherited from LoggerLocal.
     LOGV("Initialized cron_next_sensor '%s'", schedule->getName().c_str());
   }
   
   void setup() override {
+    //set_disabled_by_default(false);
+    set_icon("mdi:timer-outline");
     LOGV("get_object_id(): %s", get_object_id().c_str());
   }
   
@@ -544,24 +557,23 @@ public:
   CrontabTextField(Schedule* _schedule) :
     schedule(_schedule),
     last_state("")
-    //LoggerLocal(_schedule->schedule_name)
   {
-    //set_name("Crontab");
-    //set_object_id("crontab_text_field_");
-    set_disabled_by_default(false);
-    set_icon("mdi:calendar-clock-outline");
-    traits.set_min_length(0);
-    traits.set_max_length(255);
-    traits.set_mode(text::TEXT_MODE_TEXT);
-    //set_component_source("dynamic_cron");
-    //App.register_text(this);
-    App.register_component(this);
+		//     set_disabled_by_default(false);
+		//     set_icon("mdi:calendar-clock-outline");
+		//     traits.set_min_length(0);
+		//     traits.set_max_length(255);
+		//     traits.set_mode(text::TEXT_MODE_TEXT);
+    //App.register_component(this);
     schedule->crontab_text_field = this;
-    //schedule_name = schedule->schedule_name; // schedule_name field is inherited from LoggerLocal.
     LOGV("Initialized crontab_text_field '%s'", schedule->getName().c_str());
   }
   
   void setup() override {
+  	set_disabled_by_default(false);
+    set_icon("mdi:calendar-clock-outline");
+    traits.set_min_length(0);
+    traits.set_max_length(255);
+    traits.set_mode(text::TEXT_MODE_TEXT);
     LOGV("get_object_id(): %s", get_object_id().c_str());
   }
   
