@@ -6,8 +6,11 @@ from esphome.helpers import sanitize, snake_case
 from esphome.const import (
                       CONF_ID,
                       CONF_LAMBDA,
-                      CONF_NAME
+                      CONF_NAME,
+                      CONF_MODE,
                       )
+
+import yaml
 
 # Imports do not load files or paths into the build directory.                          
 # You need to use AUTO_LOAD.
@@ -21,7 +24,10 @@ CONF_CRONTAB       = 'crontab'
 CONF_CLEAR_PREFS   = 'clear_prefs'
 CONF_TIME_FORMAT   = 'time_format'
 
-CONF_BYPASS_SWITCH = "bypass_switch"
+CONF_BYPASS_SWITCH        = "bypass_switch"
+CONF_REMEMBER_NEXT_SWITCH = "remember_next_switch"
+CONF_CRON_NEXT_SENSOR     = "cron_next_sensor"
+CONF_CRONTAB_TEXT         = "crontab_text"
 
 cg.add_build_flag("-std=gnu++17")
 cg.add_build_flag("-fexceptions")
@@ -47,22 +53,16 @@ cg.add_library(
     version="^2.5.2",
 )
 
-
-
 dynamiccron_ns      = cg.esphome_ns.namespace('dynamic_cron')
 # I don't think the rest of these classes are used in the py code.
 # Update: I think these can be used to inject code that instantiates these classes.
 #         See the esphome 'time' component for examples.
 #         https://github.com/esphome/esphome/tree/dev/esphome/components/time
 Schedule            = dynamiccron_ns.class_('Schedule', cg.Component)
-BypassSwitch        = dynamiccron_ns.class_('BypassSwitch', switch.Switch, cg.Component)
-CrontabTextField    = dynamiccron_ns.class_('CrontabTextField', text.Text, cg.Component)
-CronNextSensor      = dynamiccron_ns.class_('CronNextSensor', text_sensor.TextSensor, cg.Component)
-RememberNextSwitch  = dynamiccron_ns.class_('RememberNextSwitch', switch.Switch, cg.Component)
 
 CONFIG_SCHEMA = cv.Schema({
-    cv.Optional(CONF_NAME):                            cv.string,
     cv.GenerateID(CONF_ID):                            cv.declare_id(Schedule),
+    cv.Optional(CONF_NAME):                            cv.string,
     cv.Required(CONF_LAMBDA):                          cv.returning_lambda,
     cv.Optional(CONF_BYPASS, default=False):           cv.boolean,
     cv.Optional(CONF_REMEMBER_NEXT, default=False):    cv.boolean,
@@ -70,12 +70,15 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_CLEAR_PREFS, default=False):      cv.boolean,
     cv.Optional(CONF_TIME_FORMAT, default=""):         cv.string,
     
-    cv.Optional(CONF_BYPASS_SWITCH,
-    						default={ CONF_ID: "test",}
-    ):switch.SWITCH_SCHEMA.extend({
-    	cv.GenerateID(): cv.declare_id(BypassSwitch)
-    }),
+    cv.Optional(CONF_BYPASS_SWITCH): switch.switch_schema(switch.Switch),
+    cv.Optional(CONF_REMEMBER_NEXT_SWITCH): switch.switch_schema(switch.Switch),
+    cv.Optional(CONF_CRON_NEXT_SENSOR): text_sensor.text_sensor_schema(Schedule),
+    cv.Optional(CONF_CRONTAB_TEXT): text.text_schema(Schedule),
 }).extend(cv.COMPONENT_SCHEMA)
+
+FINAL_VALIDATE_SCHEMA = cv.All(
+    CONFIG_SCHEMA
+)
 
 
 ### cg.add() puts code at top of main.cpp setup() function.
@@ -89,15 +92,20 @@ CONFIG_SCHEMA = cv.Schema({
 assign_global_timestamp = cg.RawStatement(f'esphome::dynamic_cron::TIMESTAMP = {round(time())};\n')
 cg.add(assign_global_timestamp)
 
-print_version = cg.RawStatement(f'esphome::dynamic_cron::printVersion;\n')
+print_version = cg.RawStatement(f'esphome::dynamic_cron::printVersion();\n')
 cg.add(print_version)
 
+# print(CONFIG_SCHEMA)
+# print(yaml.dump(CONFIG_SCHEMA, default_flow_style=False, sort_keys=False))
 
 # This gets called for each item in the dynamic_cron:[] array in the yaml config.
 #async def to_code(config):
 # We use this form so cg.declare_id()() will work.
 # See for docs: https://github.com/esphome/esphome/blob/dev/esphome/cpp_generator.py
 async def to_code(config):
+    print("=== DYNAMIC_CRON to_code() START ===")
+    print("raw validated config keys:", list(config.keys()))
+    print("raw validated config repr:", config)
     
     name = str(config.get(CONF_NAME, config.get(CONF_ID)))
     
@@ -128,96 +136,41 @@ async def to_code(config):
     cg.add(var.setTimeFormatDefault(config[CONF_TIME_FORMAT]))
     
     
-    ### OK, see here for possible solution to registering sub-components - using proper cv:
-    ###   https://github.com/alextrical/ESPHome-Vent-Axia-Sentinel-Kinetic/blob/main/components/vent_axia_sentinel_kinetic/__init__.py
+    ### Entities/Controls/Display
     
-    # bypass_switch = cg.RawStatement(
-    #   f'esphome::dynamic_cron::BypassSwitch *bypass_switch_{id_} = new esphome::dynamic_cron::BypassSwitch({id_});\n' +
-    #   f'bypass_switch_{id_}->set_name("{name} disable");\n' +
-    #   f'bypass_switch_{id_}->set_object_id("bypass_switch_{id_}");\n'
-    # )
-    # cg.add(bypass_switch)
-    #
-    #bypass_switch_id = BypassSwitch.new(f"bypass_switch_{id_}")
-    #bypass_switch_new = switch.new_switch(bypass_switch_id)
-    #bypass_switch = cg.new_Pvariable(bypass_switch_id, var)
-    #await cg.register_component(bypass_switch, {})
-    # await switch.register_switch(bypass_switch, {})
-    # cg.add(bypass_switch.set_name(f"{name} disable"))
-    #
-    bypass_switch = await switch.new_switch(config[CONF_BYPASS_SWITCH], f'bypass_switch_{id_}')
-    cg.add(switch.register_switch(bypass_switch, config[CONF_BYPASS_SWITCH]))
-    #
-    #cg.add(cg.RawStatement(f'esphome::dynamic_cron::BypassSwitch *bypass_switch_{id_} = new esphome::dynamic_cron::BypassSwitch({id_});'))
-    cg.add(cg.RawStatement(f'bypass_switch_{id_}->set_name("{name} disable");'))
-    cg.add(cg.RawStatement(f'bypass_switch_{id_}->set_object_id("bypass_switch_{id_}");'))
-    #cg.add(cg.RawStatement(f'App.register_component(bypass_switch_{id_});'))
-    #cg.add(cg.App.register_switch(f'bypass_switch_{id_}', {}))
-    #await cg.register_component(bypass_switch, config)
-    #await cg.register_switch(f'bypass_switch_{id_}')
-    # cg.add(cg.RawStatement(f'{var}->set_bypass_switch(bypass_switch_{id_});'))
-    # cg.add(cg.RawStatement(f'bypass_switch_{id_}->set_parent({var});'))
+    # Bypass switch
+    sw_config = dict(config.get(CONF_BYPASS_SWITCH, {})) # copy so we don't mutate the original
+    sw_config.setdefault(CONF_NAME, f"{name} disable")
+    sw_config.setdefault(CONF_ID, f"{id_}_bypass")
     
+    print("SW_CONFIG BEFORE NEW_SWITCH:", sw_config)
+    print("type(sw_config.get(CONF_ID)):", type(sw_config.get(CONF_ID)), repr(sw_config.get(CONF_ID)))
     
-    # remember_next_switch = cg.RawStatement(
-    #   f'esphome::dynamic_cron::RememberNextSwitch *remember_next_switch_{id_} = new esphome::dynamic_cron::RememberNextSwitch({id_});\n' +
-    #   f'remember_next_switch_{id_}->set_name("{name} remember next");\n' +
-    #   f'remember_next_switch_{id_}->set_object_id("remember_next_switch_{id_}");\n'
-    # )
-    # cg.add(remember_next_switch)
-    #
-    # remember_next_switch_id = cg.MockObj(id_=f"remember_next_switch_{id_}", type=RememberNextSwitch)
-    # remember_next_switch    = cg.new_Pvariable(remember_next_switch_id, id_)
-    # await cg.register_component(remember_next_switch, {})
-    # await switch.register_switch(remember_next_switch, {})
-    # cg.add(remember_next_switch.set_name(f"{name} remember next"))
-    #
-    cg.add(cg.RawStatement(f'esphome::dynamic_cron::RememberNextSwitch *remember_next_switch_{id_} = new esphome::dynamic_cron::RememberNextSwitch({id_});'))
-    cg.add(cg.RawStatement(f'remember_next_switch_{id_}->set_name("{name} remember next");'))
-    cg.add(cg.RawStatement(f'remember_next_switch_{id_}->set_object_id("remember_next_switch_{id_}");'))
-    cg.add(cg.RawStatement(f'App.register_component(remember_next_switch_{id_});'))
-    # cg.add(cg.RawStatement(f'{var}->set_remember_next_switch(remember_next_switch_{id_});'))
-    # cg.add(cg.RawStatement(f'remember_next_switch_{id_}->set_parent({var});'))
+    sw_config = switch.switch_schema(switch.Switch)(sw_config)
+    sw = await switch.new_switch(sw_config)
+    cg.add(var.set_bypass_switch(sw))
+    
+    # Remember Next switch
+    rem_config = dict(config.get(CONF_REMEMBER_NEXT_SWITCH, {}))
+    rem_config.setdefault(CONF_NAME, f"{name} remember next")
+    rem_config.setdefault(CONF_ID, f"{id_}_remember_next")
+    rem_config = switch.switch_schema(switch.Switch)(rem_config)
+    rem = await switch.new_switch(rem_config)
+    cg.add(var.set_remember_next_switch(rem))
 
+    # Next Run sensor (display)
+    ts_config = dict(config.get(CONF_CRON_NEXT_SENSOR, {}))
+    ts_config.setdefault(CONF_NAME, f"{name} next run")
+    ts_config.setdefault(CONF_ID, f"{id_}_next_run")
+    ts_config = text_sensor.text_sensor_schema(text_sensor.TextSensor)(ts_config)
+    ts = await text_sensor.new_text_sensor(ts_config)
+    cg.add(var.set_cron_next_sensor(ts))
     
-    # cron_next_sensor = cg.RawStatement(
-    #   f'esphome::dynamic_cron::CronNextSensor *cron_next_sensor_{id_} = new esphome::dynamic_cron::CronNextSensor({id_});\n' +
-    #   f'cron_next_sensor_{id_}->set_name("{name} next run");\n' +
-    #   f'cron_next_sensor_{id_}->set_object_id("cron_next_sensor_{id_}");\n'
-    # )
-    # cg.add(cron_next_sensor)
-    #
-    # cron_next_sensor_id = cg.MockObj(id_=f"cron_next_sensor_{id_}", type=CronNextSensor)
-    # cron_next_sensor    = cg.new_Pvariable(cron_next_sensor_id, id_)
-    # await cg.register_component(cron_next_sensor, {})
-    # await text_sensor.register_text_sensor(cron_next_sensor, {})
-    # cg.add(cron_next_sensor.set_name(f"{name} next run"))
-    #
-    cg.add(cg.RawStatement(f'esphome::dynamic_cron::CronNextSensor *cron_next_sensor_{id_} = new esphome::dynamic_cron::CronNextSensor({id_});'))
-    cg.add(cg.RawStatement(f'cron_next_sensor_{id_}->set_name("{name} next run");'))
-    cg.add(cg.RawStatement(f'cron_next_sensor_{id_}->set_object_id("cron_next_sensor_{id_}");'))
-    cg.add(cg.RawStatement(f'App.register_component(cron_next_sensor_{id_});'))
-    # cg.add(cg.RawStatement(f'{var}->set_cron_next_sensor(cron_next_sensor_{id_});'))
-    # cg.add(cg.RawStatement(f'cron_next_sensor_{id_}->set_parent({var});'))
-    
-    
-    # crontab_text_field = cg.RawStatement(
-    #   f'esphome::dynamic_cron::CrontabTextField *crontab_text_field_{id_} = new esphome::dynamic_cron::CrontabTextField({id_});\n' +
-    #   f'crontab_text_field_{id_}->set_name("{name} crontab");\n' +
-    #   f'crontab_text_field_{id_}->set_object_id("crontab_text_field_{id_}");\n'
-    # )
-    # cg.add(crontab_text_field)
-    #
-    # crontab_text_field_id = cg.MockObj(id_=f"crontab_text_field_{id_}", type=CrontabTextField)
-    # crontab_text_field    = cg.new_Pvariable(crontab_text_field_id, id_)
-    # await cg.register_component(crontab_text_field, {})
-    # await text.register_text(crontab_text_field, {})
-    # cg.add(crontab_text_field.set_name(f"{name} crontab"))
-    #
-    cg.add(cg.RawStatement(f'esphome::dynamic_cron::CrontabTextField *crontab_text_field_{id_} = new esphome::dynamic_cron::CrontabTextField({id_});'))
-    cg.add(cg.RawStatement(f'crontab_text_field_{id_}->set_name("{name} crontab");'))
-    cg.add(cg.RawStatement(f'crontab_text_field_{id_}->set_object_id("crontab_text_field_{id_}");'))
-    cg.add(cg.RawStatement(f'App.register_component(crontab_text_field_{id_});'))
-    # cg.add(cg.RawStatement(f'{var}->set_crontab_text_field(crontab_text_field_{id_});'))
-    # cg.add(cg.RawStatement(f'crontab_text_field_{id_}->set_parent({var});'))
-
+    # Crontab text (data entry field)
+    txt_config = dict(config.get(CONF_CRONTAB_TEXT, {}))
+    txt_config.setdefault(CONF_NAME, f"{name} crontab")
+    txt_config.setdefault(CONF_ID, f"{id_}_crontab")
+    txt_config.setdefault(CONF_MODE, 'text')
+    txt_config = text.text_schema(text.Text)(txt_config)
+    txt = await text.new_text(txt_config)
+    cg.add(var.set_crontab_text(txt))

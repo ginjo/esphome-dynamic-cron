@@ -40,10 +40,10 @@ namespace dynamic_cron {
 // errors at compile time. Currently not an issue, since we build subcomponents
 // from the py code, which is the right way to do it in esphome, I think.
 //
-class CrontabTextField;
-class BypassSwitch;
-class RememberNextSwitch;
-class CronNextSensor;
+// class CrontabTextField;
+// class BypassSwitch;
+// class RememberNextSwitch;
+// class CronNextSensor;
 
 
 class Schedule : public Component, public ScheduleCore {
@@ -61,11 +61,29 @@ public:
   
   // These are just to hold pointers to the subcomponents.
   // They aren't currently used or necessary, but may be nice to have in future.
-  CrontabTextField    *crontab_text_field;
-  BypassSwitch        *bypass_switch;
-  RememberNextSwitch  *remember_next_switch;
-  CronNextSensor      *cron_next_sensor;
+	//   CrontabTextField    *crontab_text_field;
+	//   BypassSwitch        *bypass_switch;
+	//   RememberNextSwitch  *remember_next_switch;
+	//   CronNextSensor      *cron_next_sensor;
   
+  switch_::Switch        		*bypass_switch{nullptr};
+  switch_::Switch						*remember_next_switch{nullptr};
+  text_sensor::TextSensor 	*cron_next_sensor{nullptr};
+  text::Text    						*crontab_text{nullptr};
+  
+  // Macro for defining setters for the above entity pointer variables.
+  #define DEFINE_SETTER(MemberType, MemberName) \
+    void set_##MemberName(MemberType *value) { this->MemberName = value; }
+    
+  DEFINE_SETTER(switch_::Switch, bypass_switch)
+  DEFINE_SETTER(switch_::Switch, remember_next_switch)
+  DEFINE_SETTER(text_sensor::TextSensor, cron_next_sensor)
+	DEFINE_SETTER(text::Text, crontab_text)
+  
+  bool                      last_bypass_state = 0;
+  bool                      last_remember_next_state = 0;
+	std::string               last_cron_next_state = "";
+	std::string               last_crontab_text_state = "";
   
   // Custom constructor method to create Schedule object.
   // NOTE: The function-pointer argument must have NO captures, if it's receiving a lambda.
@@ -131,6 +149,11 @@ public:
       	cron_loop_previous_time = std::time(NULL);
       }
     }
+    
+		updateEntityData(bypass_switch, last_bypass_state, getBypass());
+		updateEntityData(remember_next_switch, last_remember_next_state, getRememberNext());
+		updateEntityData(cron_next_sensor, last_cron_next_state, cronNextString("---"));
+		updateEntityData(crontab_text, last_crontab_text_state, getCrontab());
   }
   
   
@@ -398,201 +421,199 @@ protected:
     return rslt_final;
   }
   
-  bool last_bypass_state = 0;
   
-  void pollBypass() {
-    bool new_state = getBypass();
-    
-    if (new_state != last_bypass_state) {
-      bypass_switch->state = new_state;
-      last_state = new_state;
-      publish_state(new_state);
-    }
-  }
+  // ENTITY MANAGEMENT
   
-  bool last_remember_next_state = 0;
-  
-    void loop() override {
-    bool new_state = getRememberNext();
-    
-    if (new_state != last_remember_next_state) {
-      remember_next_switch->state = new_state;
-      last_state = new_state;
-      publish_state(new_state);
-    }
-  }
+	//   switch_::Switch        		*bypass_switch;
+	//   switch_::Switch						*remember_next_switch;
+	//   text_sensor::TextSensor 	*cron_next_sensor;
+	//   text::Text    						*crontab_text_field;
+	//   
+	//   bool last_bypass_state = 0;
+	//   bool last_remember_next_state = 0;
+	// 	std::string last_cron_next_state = "";
+	// 	std::string last_crontab_text_state = "";
+	
+	template<typename EntityT, typename StateT>
+	void updateEntityData(EntityT *entity, StateT &last_state, const StateT &new_state) {
+		if (!entity) return;  // guard against null
+		if (new_state != last_state) {
+			entity->publish_state(new_state);
+			last_state = new_state;
+		}
+	}
 
 }; // Schedule class
 
 
 
 // ESPHOME ENTITY SUB-COMPONENTS
-
-class BypassSwitch : public switch_::Switch, public Component, public LoggerLocal<BypassSwitch> {
-public:
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
-  Schedule *schedule;
-  bool last_state;
-  
-  explicit BypassSwitch(Schedule* _schedule) :
-    schedule(_schedule),
-    last_state(0)
-  {
-		//     set_disabled_by_default(false);
-		//     set_icon("mdi:timer-off-outline");
-		//     set_restore_mode(switch_::SWITCH_RESTORE_DISABLED);
-    schedule->bypass_switch = this;
-    LOGV("Initialized bypass_switch '%s'", schedule->getName().c_str());
-  }
-  
-  void setup() override {
-    set_disabled_by_default(false);
-    set_icon("mdi:timer-off-outline");
-    set_restore_mode(switch_::SWITCH_RESTORE_DISABLED);
-    LOGV("get_object_id(): %s", get_object_id().c_str());
-  }
-  
-  void loop() override {
-    bool new_state = schedule->getBypass();
-    
-    if (new_state != last_state) {
-      state = new_state;
-      last_state = state;
-      publish_state(state);
-    }
-  }
-  
-  void write_state(bool _state) {
-    LOGD("BypassSwitch::write_state(): %d", _state);
-    schedule->setBypass(_state);
-  }
-  
-}; // BypassSwitch class
-
-
-class RememberNextSwitch : public switch_::Switch, public Component, public LoggerLocal<RememberNextSwitch> {
-public:
-  
-  Schedule *schedule;
-  bool last_state;
-  
-  RememberNextSwitch(Schedule* _schedule) :
-    schedule(_schedule),
-    last_state(0)
-  {
-		//     set_disabled_by_default(false);
-		//     set_icon("mdi:memory");
-		//     set_restore_mode(switch_::SWITCH_RESTORE_DISABLED);
-    schedule->remember_next_switch = this;
-    LOGV("Initialized remember_next_switch '%s'", schedule->getName().c_str());
-  }
-  
-  void setup() override {
-  	set_disabled_by_default(false);
-    set_icon("mdi:memory");
-    set_restore_mode(switch_::SWITCH_RESTORE_DISABLED);
-    LOGV("get_object_id(): %s", get_object_id().c_str());
-  }
-  
-  void loop() override {
-    bool new_state = schedule->getRememberNext();
-    
-    if (new_state != last_state) {
-      state = new_state;
-      last_state = state;
-      publish_state(state);
-    }
-  }
-  
-  void write_state(bool _state) {
-    LOGD("RememberNextSwitch::write_state(): %d", _state);
-    schedule->setRememberNext(_state);
-  }
-  
-}; // RememberNextSwitch class
-
-
-class CronNextSensor : public text_sensor::TextSensor, public Component, public LoggerLocal<CronNextSensor> {
-public:
-  
-  Schedule *schedule;
-  std::string last_state;
-  
-  CronNextSensor(Schedule* _schedule) :
-    schedule(_schedule),
-    last_state("")
-  {
-		//     //set_disabled_by_default(false);
-		//     set_icon("mdi:timer-outline");
-    schedule->cron_next_sensor = this;
-    LOGV("Initialized cron_next_sensor '%s'", schedule->getName().c_str());
-  }
-  
-  void setup() override {
-    //set_disabled_by_default(false);
-    set_icon("mdi:timer-outline");
-    LOGV("get_object_id(): %s", get_object_id().c_str());
-  }
-  
-  void loop() override {
-    std::string new_state = schedule->cronNextString("---");
-    //state = schedule->cronNextString("---");
-    
-    if (new_state != last_state) {
-      state = new_state;
-      last_state = state;
-      publish_state(state);
-    }
-  }
-  
-}; // CronNextSensor class
-
-
-class CrontabTextField : public text::Text, public Component, public LoggerLocal<CrontabTextField> {
-public:
-  
-  Schedule *schedule;
-  std::string last_state;
-  
-  CrontabTextField(Schedule* _schedule) :
-    schedule(_schedule),
-    last_state("")
-  {
-		//     set_disabled_by_default(false);
-		//     set_icon("mdi:calendar-clock-outline");
-		//     traits.set_min_length(0);
-		//     traits.set_max_length(255);
-		//     traits.set_mode(text::TEXT_MODE_TEXT);
-    //App.register_component(this);
-    schedule->crontab_text_field = this;
-    LOGV("Initialized crontab_text_field '%s'", schedule->getName().c_str());
-  }
-  
-  void setup() override {
-  	set_disabled_by_default(false);
-    set_icon("mdi:calendar-clock-outline");
-    traits.set_min_length(0);
-    traits.set_max_length(255);
-    traits.set_mode(text::TEXT_MODE_TEXT);
-    LOGV("get_object_id(): %s", get_object_id().c_str());
-  }
-  
-  void loop() override {
-    std::string new_state = schedule->getCrontab();
-    
-    if (new_state != last_state) {
-      state = new_state;
-      last_state = state;
-      publish_state(state);
-    }
-  }
-  
-  void control(const std::string &_state) {
-    LOGV("CrontabTextField::control(): %d", &_state);
-    schedule->setCrontab(_state);
-  }
-  
-}; // CrontabTextField class
+// 
+// class BypassSwitch : public switch_::Switch, public Component, public LoggerLocal<BypassSwitch> {
+// public:
+//                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+//   Schedule *schedule;
+//   bool last_state;
+//   
+//   explicit BypassSwitch(Schedule* _schedule) :
+//     schedule(_schedule),
+//     last_state(0)
+//   {
+// 		//     set_disabled_by_default(false);
+// 		//     set_icon("mdi:timer-off-outline");
+// 		//     set_restore_mode(switch_::SWITCH_RESTORE_DISABLED);
+//     schedule->bypass_switch = this;
+//     LOGV("Initialized bypass_switch '%s'", schedule->getName().c_str());
+//   }
+//   
+//   void setup() override {
+//     set_disabled_by_default(false);
+//     set_icon("mdi:timer-off-outline");
+//     set_restore_mode(switch_::SWITCH_RESTORE_DISABLED);
+//     LOGV("get_object_id(): %s", get_object_id().c_str());
+//   }
+//   
+//   void loop() override {
+//     bool new_state = schedule->getBypass();
+//     
+//     if (new_state != last_state) {
+//       state = new_state;
+//       last_state = state;
+//       publish_state(state);
+//     }
+//   }
+//   
+//   void write_state(bool _state) {
+//     LOGD("BypassSwitch::write_state(): %d", _state);
+//     schedule->setBypass(_state);
+//   }
+//   
+// }; // BypassSwitch class
+// 
+// 
+// class RememberNextSwitch : public switch_::Switch, public Component, public LoggerLocal<RememberNextSwitch> {
+// public:
+//   
+//   Schedule *schedule;
+//   bool last_state;
+//   
+//   RememberNextSwitch(Schedule* _schedule) :
+//     schedule(_schedule),
+//     last_state(0)
+//   {
+// 		//     set_disabled_by_default(false);
+// 		//     set_icon("mdi:memory");
+// 		//     set_restore_mode(switch_::SWITCH_RESTORE_DISABLED);
+//     schedule->remember_next_switch = this;
+//     LOGV("Initialized remember_next_switch '%s'", schedule->getName().c_str());
+//   }
+//   
+//   void setup() override {
+//   	set_disabled_by_default(false);
+//     set_icon("mdi:memory");
+//     set_restore_mode(switch_::SWITCH_RESTORE_DISABLED);
+//     LOGV("get_object_id(): %s", get_object_id().c_str());
+//   }
+//   
+//   void loop() override {
+//     bool new_state = schedule->getRememberNext();
+//     
+//     if (new_state != last_state) {
+//       state = new_state;
+//       last_state = state;
+//       publish_state(state);
+//     }
+//   }
+//   
+//   void write_state(bool _state) {
+//     LOGD("RememberNextSwitch::write_state(): %d", _state);
+//     schedule->setRememberNext(_state);
+//   }
+//   
+// }; // RememberNextSwitch class
+// 
+// 
+// class CronNextSensor : public text_sensor::TextSensor, public Component, public LoggerLocal<CronNextSensor> {
+// public:
+//   
+//   Schedule *schedule;
+//   std::string last_state;
+//   
+//   CronNextSensor(Schedule* _schedule) :
+//     schedule(_schedule),
+//     last_state("")
+//   {
+// 		//     //set_disabled_by_default(false);
+// 		//     set_icon("mdi:timer-outline");
+//     schedule->cron_next_sensor = this;
+//     LOGV("Initialized cron_next_sensor '%s'", schedule->getName().c_str());
+//   }
+//   
+//   void setup() override {
+//     //set_disabled_by_default(false);
+//     set_icon("mdi:timer-outline");
+//     LOGV("get_object_id(): %s", get_object_id().c_str());
+//   }
+//   
+//   void loop() override {
+//     std::string new_state = schedule->cronNextString("---");
+//     //state = schedule->cronNextString("---");
+//     
+//     if (new_state != last_state) {
+//       state = new_state;
+//       last_state = state;
+//       publish_state(state);
+//     }
+//   }
+//   
+// }; // CronNextSensor class
+// 
+// 
+// class CrontabTextField : public text::Text, public Component, public LoggerLocal<CrontabTextField> {
+// public:
+//   
+//   Schedule *schedule;
+//   std::string last_state;
+//   
+//   CrontabTextField(Schedule* _schedule) :
+//     schedule(_schedule),
+//     last_state("")
+//   {
+// 		//     set_disabled_by_default(false);
+// 		//     set_icon("mdi:calendar-clock-outline");
+// 		//     traits.set_min_length(0);
+// 		//     traits.set_max_length(255);
+// 		//     traits.set_mode(text::TEXT_MODE_TEXT);
+//     //App.register_component(this);
+//     schedule->crontab_text_field = this;
+//     LOGV("Initialized crontab_text_field '%s'", schedule->getName().c_str());
+//   }
+//   
+//   void setup() override {
+//   	set_disabled_by_default(false);
+//     set_icon("mdi:calendar-clock-outline");
+//     traits.set_min_length(0);
+//     traits.set_max_length(255);
+//     traits.set_mode(text::TEXT_MODE_TEXT);
+//     LOGV("get_object_id(): %s", get_object_id().c_str());
+//   }
+//   
+//   void loop() override {
+//     std::string new_state = schedule->getCrontab();
+//     
+//     if (new_state != last_state) {
+//       state = new_state;
+//       last_state = state;
+//       publish_state(state);
+//     }
+//   }
+//   
+//   void control(const std::string &_state) {
+//     LOGV("CrontabTextField::control(): %d", &_state);
+//     schedule->setCrontab(_state);
+//   }
+//   
+// }; // CrontabTextField class
 
 
 } // dynamic_cron namespace
