@@ -32,7 +32,8 @@ inline std::string TIME_FORMAT = "%Y-%m-%d %H:%M:%S";
 
 void printVersion() {
   //LoggerLocal<void>::SLOGI("dynamic_cron", "version: %s, firmware build: %lld", VERSION.c_str(), (long long)TIMESTAMP);
-  SLOGI("dynamic_cron", "version: %s, firmware build: %lld", VERSION.c_str(), (long long)TIMESTAMP);
+  //SLOGI("dynamic_cron", "version: %s, firmware build: %lld", VERSION.c_str(), (long long)TIMESTAMP);
+  printf("DynamiCron version: %s, firmware build: %lld\n", VERSION.c_str(), (long long)TIMESTAMP);
 }
 
 
@@ -486,9 +487,9 @@ protected:
 
 
   // Compares cronnext with current time and calls lambda.
-  // Calls savePrefs(). Update: savePrefs() no longer called here. See ...esphome.h
+  // Calls savePrefs(). Update: savePrefs() no longer called here. See dynamic_cron_esphome.h
   void cronLoop() {
-    if (timeIsValid() && cronNextExpired()) {
+    if (! bypass && timeIsValid() && cronNextExpired()) {
       LOGI("%s cron schedule calling action(s)", schedule_name.c_str());
       bool result = target_action_fptr();
       if (result) {
