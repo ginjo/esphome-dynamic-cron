@@ -65,6 +65,8 @@ external_components:
   - source:
       type: git
       url: https://github.com/ginjo/esphome-dynamic-cron
+      # optional
+      #ref: <git-branch-or-tag>
 
 dynamic_cron:
   - name: Lawn
@@ -74,7 +76,7 @@ dynamic_cron:
     lambda: |-
       ESP_LOGD("lawn", "Lawn schedule lambda running @ %s", lawn_schedule->timeToString().c_str());
       return {true};
-  
+
   - name: Drip
     id: drip_schedule
     crontab: "0 0 1 * * *"

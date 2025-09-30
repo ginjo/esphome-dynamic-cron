@@ -19,7 +19,11 @@
   ![Screenshot of dynamic_cron interface in ESPHome](img/dynamic_cron_ui.png)
 
 ## Requirements
-
+  
+  DynamicCron version 0.2.x has been refactored to work on ESPHome version 2025.x.x
+  and greater. If you're using ESPHome version 2024.11.x or earlier, use DynamicCron
+  version 0.1.1.
+  
   This component has two external dependencies that are automatically managed:
   1. [Croncpp](https://github.com/mariusbancila/croncpp) for parsing cron expressions
   2. [Preferences](https://docs.espressif.com/projects/arduino-esp32/en/latest/api/preferences.html) for storing settings to esp32 NVS
@@ -33,10 +37,10 @@
   * You should define a `time` component in your ESPHome yaml config, as
     scheduling software needs a reliable time source.
     
-  * When using this library, ESPHome will compile with build-flags `-std=gnu++17` and
-    `-fexceptions`. This should not be a problem for most ESPHome projects, however
+  * When using this library, ESPHome will compile with build-flag `-fexceptions`.
+    This should not be a problem for most ESPHome projects, however
     there is a possibility of conflict with other external libraries that specifically
-    disable these options.
+    disable this option.
 
 
 ## Setup
@@ -56,6 +60,8 @@
       - source:
           type: git
           url: https://github.com/ginjo/esphome-dynamic-cron
+          # optional
+          #ref: <git-branch-or-tag> 
     
     dynamic_cron:
       - name: Irrigation
