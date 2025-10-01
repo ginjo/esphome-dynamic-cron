@@ -60,14 +60,14 @@
       - source:
           type: git
           url: https://github.com/ginjo/esphome-dynamic-cron
-          # optional
+          # Optional reference to a specific git branch or tag.
           #ref: <git-branch-or-tag> 
     
     dynamic_cron:
       - name: Irrigation
+        # Adjust the lambda to suit your needs.
         lambda: |-
-          ESP_LOGD("irrigation", "Starting irrigation");
-          // ... any c++ code ...
+          id(relay_1).turn_on();
           return {true};
           
           # You must return true or false from the lambda.
@@ -82,14 +82,14 @@
   These are the available options you can use to configure each instance of a dynamic_cron schedule.
   See below for more detail on some of these options.
  
-  * **name**: string, *optional*
-  * **id**:   string, *optional*
-
+  * **name**: string, *optional* `(auto-generated)`
+  * **id**:   string, *optional* `(auto-generated)`
+    
     You should provide at least one of `name` or `id`, or you can provide both.
     If `name` is omitted, the ID will be used to form a default name.
 
   * **lambda**: any c++ code, *required*
-
+    
     The `lambda` is called whenever the current time exceeds the cron next-run time.
     You *MUST* return `true` or `false` from the lambda.
   
@@ -102,18 +102,18 @@
     Sets the default `crontab` string. The `crontab` string can be edited at runtime through
     the web interface or the API.
     
-  * **disable**: boolean, *optional* `(false)`
-  
+  * **disabled**: boolean, *optional* `(false)`
+    
     Sets the default `disabled` status. The current `disabled` status can be
     changed at runtime through the web interface or the API.
     
   * **remember_next**: boolean, *optional* `(false)`
-  
+    
     Sets the default `remember_next` status. The current `remember_next` status
     can be changed at runtime through the web interface or the API.
     
   * **clear_prefs**: boolean, *optional* `(false)`
-  
+    
     If this option is `true`, preferences for this schedule, keyed by the schedule `id`,
     will be cleared during the *first* boot after flashing *this specific* build of firmware.
     Subsequent boots with the same firmware will not clear preferences.
@@ -125,10 +125,31 @@
     
     A C-style `strftime` format string describing the display of schedule date and time.
     The default format string displays date and time as `2025-03-14 21:15:43`.
+    
+  * **disabled_switch**: Switch component, *optional* `(auto-generated)`
+    
+    Provides the switch control to disable the schedule.
+    See ESPHome Switch component documentation for options.
+    
+  * **remember_next_switch**: Switch component, *optional* `(auto-generated)`
+    
+    Provides the switch control to enable memory of a missed trigger time.
+    See ESPHome Switch component documentation for options.
+    
+  * **cron_next_sensor**: TextSensor component, *optional* `(auto-generated)`
+    
+    Provides the display of the cron next run time.
+    See ESPHome TextSensor component documentation for options.
+    
+  * **crontab_text**: Text component, *optional* `(auto-generated)`
+    
+    Provides the text field to read and edit the cron expression.
+    See ESPHome Text component documentation for options.
+
 
 #### Preferences, Defaults, and Memory
   
-  During normal operation, changes made to the `crontab`, `disable`, and `remember_next`
+  During normal operation, changes made to the `crontab`, `disabled`, and `remember_next`
   controls, will be stored in NVS (non volatile storage). If `remember_next` is
   set to `true`, the next-run time will also be stored. All of these settings will be remembered
   across reboots.
@@ -216,6 +237,13 @@
           return {true};
   ```
 
+  ### New options for version 0.2.0
+  
+  It is now possible to customize the control and display entities that show in the web GUI.
+  The new controls are `disabled_switch`, `remember_next_switch`, `cron_next_sensor`, `crontab_text`.
+  
+  See the ESPHome documentation on **Switch**, **TextSensor**, and **Text** components for
+  customization options.
 
 ## More info on Croncpp and Preferences:
 

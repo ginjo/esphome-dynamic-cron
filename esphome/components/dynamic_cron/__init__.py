@@ -24,7 +24,7 @@ CONF_CRONTAB       = 'crontab'
 CONF_CLEAR_PREFS   = 'clear_prefs'
 CONF_TIME_FORMAT   = 'time_format'
 
-CONF_BYPASS_SWITCH        = "bypass_switch"
+CONF_BYPASS_SWITCH        = "disabled_switch"
 CONF_REMEMBER_NEXT_SWITCH = "remember_next_switch"
 CONF_CRON_NEXT_SENSOR     = "cron_next_sensor"
 CONF_CRONTAB_TEXT         = "crontab_text"
@@ -151,13 +151,13 @@ async def to_code(config):
     
     else:
       sw_config = {
-        CONF_NAME:    f'{schedule_name} disable',
-        CONF_ID:      f'{id_}_bypass',
+        CONF_NAME:    f'{schedule_name} disabled',
+        CONF_ID:      f'{id_}_disabled',
       }
       sw_config = switch.switch_schema(BypassSwitch)(sw_config)
     
-    # sw_config.setdefault(CONF_NAME, f"{schedule_name} disable")
-    # sw_config.setdefault(CONF_ID, f"{id_}_bypass")
+    # sw_config.setdefault(CONF_NAME, f"{schedule_name} disabled")
+    # sw_config.setdefault(CONF_ID, f"{id_}_disabled")
     
     sw = await switch.new_switch(sw_config)
     cg.add(var.set_bypass_switch(sw))

@@ -73,6 +73,7 @@ dynamic_cron:
     id: lawn_schedule
     disabled: true
     crontab: "0 0 2 * * *"
+    # This lambda just prints a log line, but you can do anything here.
     lambda: |-
       ESP_LOGD("lawn", "Lawn schedule lambda running @ %s", lawn_schedule->timeToString().c_str());
       return {true};
@@ -82,6 +83,7 @@ dynamic_cron:
     crontab: "0 0 1 * * *"
     remember_next: false
     clear_prefs: false
+    # This lambda just prints a log line, but you can do anything here.
     lambda: |-
       ESP_LOGD("drip", "Drip schedule lambda running @ %s", drip_schedule->timeToString().c_str());
       return {true};
