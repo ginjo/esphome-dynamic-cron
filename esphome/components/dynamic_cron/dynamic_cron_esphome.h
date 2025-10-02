@@ -278,7 +278,7 @@ protected:
         );
       }
             
-      // Initializes data fields
+      // Initializes data fields with defaults.
       
       if (! api.isKey("crontab")) {
         api.putString("crontab", String(schedule->crontab_default));
@@ -302,6 +302,7 @@ protected:
     } // initialize()
     
     
+    // Loads stored prefs into local variables.
     void load() {
       LOGV("Opening prefs %s for reading", schedule->id_hash.c_str());
       api.begin(schedule->id_hash.c_str(), true); // open prefs read-only
@@ -323,7 +324,7 @@ protected:
   }; // SchedulePrefs struct
   
   
-  // Loads persistent data from esp32 NVS.
+  // Loads persistent data from SchedulePrefs vars into Schedule vars.
   SchedulePrefs loadPrefs() {
     LOGV("Beginning loadPrefs()");
 
@@ -435,6 +436,10 @@ protected:
 
 
 // ESPHOME ENTITY SUB-COMPONENTS
+//
+// TODO: Refactor default icon settings – move them to .py file.
+//       See here for refactoring default entity icons:
+//       https://github.com/esphome/esphome/blob/dev/esphome/const.py
 
 class BypassSwitch : public switch_::Switch, public Component, public LoggerLocal<BypassSwitch> {
 public:

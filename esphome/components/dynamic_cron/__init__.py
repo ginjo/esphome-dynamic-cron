@@ -80,6 +80,10 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_CLEAR_PREFS, default=False):      cv.boolean,
     cv.Optional(CONF_TIME_FORMAT, default=""):         cv.string,
     
+    # TODO: Refactor default entity icons.
+    # Supposedly, I can add defaults after the class name, like this:
+    #   switch.switch_schema(BypassSwitch, icon="mdi:chip")
+    #
     cv.Optional(CONF_BYPASS_SWITCH): switch.switch_schema(BypassSwitch),
     cv.Optional(CONF_REMEMBER_NEXT_SWITCH): switch.switch_schema(RememberNextSwitch),
     cv.Optional(CONF_CRON_NEXT_SENSOR): text_sensor.text_sensor_schema(CronNextSensor),
@@ -143,6 +147,7 @@ async def to_code(config):
     cg.add(var.setTimeFormatDefault(config[CONF_TIME_FORMAT]))
     
     
+    
     ### Entities/Controls/Display ###
     
     # Bypass switch
@@ -163,6 +168,7 @@ async def to_code(config):
     cg.add(var.set_bypass_switch(sw))
     cg.add(sw.set_schedule(var))
     
+    
     # Remember Next switch
     if CONF_REMEMBER_NEXT_SWITCH in config:
       rem_config = config[CONF_REMEMBER_NEXT_SWITCH]
@@ -176,7 +182,8 @@ async def to_code(config):
     rem = await switch.new_switch(rem_config)
     cg.add(var.set_remember_next_switch(rem))
     cg.add(rem.set_schedule(var))
-
+    
+    
     # Next Run sensor (display)
     if CONF_CRON_NEXT_SENSOR in config:
       ts_config = config[CONF_CRON_NEXT_SENSOR]
@@ -189,6 +196,7 @@ async def to_code(config):
     
     ts = await text_sensor.new_text_sensor(ts_config)
     cg.add(var.set_cron_next_sensor(ts))
+    cg.add(ts.set_schedule(var))
     
     # Crontab text (data entry field)
     if CONF_CRONTAB_TEXT in config:
@@ -200,7 +208,7 @@ async def to_code(config):
         CONF_MODE:    'text',
       }
       txt_config = text.text_schema(CrontabText)(txt_config)
-
+    
     txt = await text.new_text(txt_config)
     cg.add(var.set_crontab_text(txt))
     cg.add(txt.set_schedule(var))

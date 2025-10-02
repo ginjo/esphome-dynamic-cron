@@ -11,7 +11,6 @@
 #include <map>
 #include <algorithm>
 #include <time.h>
-#include <ctime>
 #include "version.h"
 #include "logger_local.h"
 
@@ -339,7 +338,7 @@ public:
   }
 
 
-  // Sets bypass bool field and resets cronnect accordingly.
+  // Sets bypass bool field and resets cron next accordingly.
   bool setBypass(bool val) {
     bypass = val;
     LOGI("Set bypass '%d'", bypass);
