@@ -17,16 +17,18 @@
 #include "Arduino.h"
 #include <iostream>
 #include <string>
-#include <Preferences.h>
+//#include <Preferences.h>
 #include <ctime>
 
 #include "esphome/core/component.h"
 #include "esphome/core/application.h"
 #include "esphome/core/time.h"
+#include "esphome/core/preferences.h"
 #include "esphome/components/switch/switch.h"
 #include "esphome/components/text_sensor/text_sensor.h"
 #include "esphome/components/text/text.h"
 
+#include "preference_wrapper.h"
 #include "dynamic_cron.h"
 
 
@@ -193,9 +195,10 @@ protected:
   // As such, it has certain specific and privileged behavior with regards to the parent Schedule class.
   //
   struct SchedulePrefs : public LoggerLocal<SchedulePrefs> {
+
     
   public:
-    Preferences   api;
+    //Preferences   api;
     Schedule*     schedule;
     
     std::time_t   initialized;  // TIMESTAMP of firmware in seconds-since-epoch at compile time (from __init__.py).
@@ -208,18 +211,31 @@ protected:
     bool          bypass;
     std::time_t   cronnext;
     
+    ESPPreferenceObject initialized_pref;
+    ESPPreferenceObject bypass_pref;
+    ESPPreferenceObject remember_next_pref;
+    ESPPreferenceObject cronnext_pref;
+    //esphome::ESPPreferenceObject crontab_pref;
+    StringPreference<128> crontab_pref{global_preferences, 5};
+    
+    
     SchedulePrefs(Schedule* _schedule) :
       schedule(_schedule)
     {
       initialize();
-      load();
+      //load();
     }
     
     // Does this need to return a bool, or can it be void?
-    bool initialize(bool force = false) {  // We're not using 'force' yet
-      LOGV("Opening prefs %s %s for initialization", schedule->schedule_id.c_str(), schedule->id_hash.c_str());
+    void initialize(bool force = false) {  // We're not using 'force' yet
+      LOGV("SchedulePrefs.initialize() %s %s for initialization", schedule->schedule_id.c_str(), schedule->id_hash.c_str());
 
-      api.begin(schedule->id_hash.c_str(), false); // open prefs read-write
+      //api.begin(schedule->id_hash.c_str(), false); // open prefs read-write
+      initialized_pref   = global_preferences->make_preference<bool>(1);
+      bypass_pref        = global_preferences->make_preference<bool>(2);
+      remember_next_pref = global_preferences->make_preference<bool>(3);
+      cronnext_pref      = global_preferences->make_preference<uint64_t>(4);
+      //crontab_pref       = global_preferences->make_preference<std::string>(0);
       
       if (TIMESTAMP == 0) {
         LOGW(
@@ -230,97 +246,122 @@ protected:
       
       // Initializes namespace timestamp, if not already done.
       
-      if (! api.isKey("initialized")) {
-        LOGI("Initializing prefs namespace %s %s with stamp '%lld'",
+      if (! initialized_pref.load(&initialized)) {
+        LOGI("Initializing prefs for %s with stamp '%lld'",
           schedule->schedule_id.c_str(),
-          schedule->id_hash.c_str(),
           (long long)TIMESTAMP
         );
         
         // Sets the 'initialized' preference field to TIMESTAMP (seconds, from __init__.py).
-        api.putLong64("initialized", TIMESTAMP);
+        //api.putLong64("initialized", TIMESTAMP);
+        initialized = TIMESTAMP;
+        initialized_pref.save(&initialized);
         
-        size_t number_free_entries = api.freeEntries();
-        LOGD("There are %u free entries available in the namespace table %s",
-          number_free_entries,
-          schedule->id_hash.c_str()
-        );
+        // size_t number_free_entries = api.freeEntries();
+        // LOGD("There are %u free entries available in the namespace table %s",
+        //   number_free_entries,
+        //   schedule->id_hash.c_str()
+        // );
       }
       
       // Retrieves the preference 'initialized' field.
-      initialized = api.getLong64("initialized", 0);
+      //initialized = api.getLong64("initialized", 0);
 
       // Clears preferences namespace, if conditions allow.
       //
       // Note that logically: !(x | y) == (!x & !y)
       //
-      bool rslt = false;
-      if (force == true || schedule->clear_prefs == true && TIMESTAMP != 0 && initialized != TIMESTAMP) {
-        rslt = api.clear(); // && api.putLong64("initialized", TIMESTAMP);
-        if (rslt) {
-          LOGI("Re-initialized prefs namespace %s %s with stamp '%lld'",
-            schedule->schedule_id.c_str(),
-            schedule->id_hash.c_str(),
-            (long long)TIMESTAMP
-          );
-        }
-      }
+      // bool rslt = false;
+      // if (force == true || schedule->clear_prefs == true && TIMESTAMP != 0 && initialized != TIMESTAMP) {
+      //   rslt = api.clear(); // && api.putLong64("initialized", TIMESTAMP);
+      //   if (rslt) {
+      //     LOGI("Re-initialized prefs namespace %s %s with stamp '%lld'",
+      //       schedule->schedule_id.c_str(),
+      //       schedule->id_hash.c_str(),
+      //       (long long)TIMESTAMP
+      //     );
+      //   }
+      // }
       
       // Updates 'initialized' if different from TIMESTAMP.
       if (TIMESTAMP != 0 && initialized != TIMESTAMP) {
-        api.putLong64("initialized", TIMESTAMP);
-        initialized = api.getLong64("initialized", 0);
+        //api.putLong64("initialized", TIMESTAMP);
+        //initialized = api.getLong64("initialized", 0);
+        initialized = TIMESTAMP;
+        initialized_pref.save(&initialized);
         
-        LOGI("Updated prefs namespace %s %s with stamp '%lld'",
+        LOGI("Updated prefs for %s with stamp '%lld'",
           schedule->schedule_id.c_str(),
-          schedule->id_hash.c_str(),
           (long long)initialized
         );
       }
             
       // Initializes data fields with defaults.
       
-      if (! api.isKey("crontab")) {
-        api.putString("crontab", String(schedule->crontab_default));
+      // if (! api.isKey("crontab")) {
+      //   api.putString("crontab", String(schedule->crontab_default));
+      // }
+      //
+      // if (! api.isKey("remember_next")) {
+      //   api.putBool("remember_next", schedule->remember_next_default);
+      // }
+      //
+      // if (! api.isKey("bypass")) {
+      //   api.putBool("bypass", schedule->bypass_default);
+      // }
+      // 
+      // if (! api.isKey("cronnext")) {
+      //   api.putLong64("cronnext", 0);
+      // }
+      // 
+      // api.end();
+      
+      
+      if (! bypass_pref.load(&bypass)) {
+        bypass = schedule->bypass_default;
+        bypass_pref.save(&bypass);
       }
       
-      if (! api.isKey("remember_next")) {
-        api.putBool("remember_next", schedule->remember_next_default);
+      if (! remember_next_pref.load(&remember_next)) {
+        remember_next = schedule->remember_next_default;
+        remember_next_pref.save(&remember_next);
       }
       
-      if (! api.isKey("bypass")) {
-        api.putBool("bypass", schedule->bypass_default);
+      if (! cronnext_pref.load(&cronnext)) {
+        cronnext = 0;
+        cronnext_pref.save(&cronnext);
       }
       
-      if (! api.isKey("cronnext")) {
-        api.putLong64("cronnext", 0);
+      if (! crontab_pref.load(crontab)) {
+        crontab = schedule->crontab_default;
+        crontab_pref.save(crontab);
       }
-
-      api.end();
-      return rslt;
+      
+      //return rslt;
       
     } // initialize()
     
     
     // Loads stored prefs into local variables.
-    void load() {
-      LOGV("Opening prefs %s for reading", schedule->id_hash.c_str());
-      api.begin(schedule->id_hash.c_str(), true); // open prefs read-only
-      
-      LOGV("Reading crontab from prefs");
-      crontab = api.getString("crontab", schedule->crontab_default).c_str();
-
-      LOGV("Reading remember_next from prefs");
-      remember_next = api.getBool("remember_next", schedule->remember_next_default);
-
-      LOGV("Reading bypass from prefs");
-      bypass = api.getBool("bypass", schedule->bypass_default);
-
-      LOGV("Reading cronnext from prefs");
-      cronnext = (std::time_t) api.getLong64("cronnext", 0);
-
-      api.end();
-    }
+    // void load() {
+    //   LOGV("Opening prefs %s for reading", schedule->id_hash.c_str());
+    //   api.begin(schedule->id_hash.c_str(), true); // open prefs read-only
+    //   
+    //   LOGV("Reading crontab from prefs");
+    //   crontab = api.getString("crontab", schedule->crontab_default).c_str();
+    // 
+    //   LOGV("Reading remember_next from prefs");
+    //   remember_next = api.getBool("remember_next", schedule->remember_next_default);
+    // 
+    //   LOGV("Reading bypass from prefs");
+    //   bypass = api.getBool("bypass", schedule->bypass_default);
+    // 
+    //   LOGV("Reading cronnext from prefs");
+    //   cronnext = (std::time_t) api.getLong64("cronnext", 0);
+    // 
+    //   api.end();
+    // }
+    
   }; // SchedulePrefs struct
   
   
@@ -362,32 +403,38 @@ protected:
     // If any changes, then open prefs for writing.
     if (crontab_changed || remember_next_changed || cronnext_changed || bypass_changed) {
       
-      Preferences api;
+      //Preferences api;
 
-      LOGD("Opening prefs %s %s for writing", schedule_id.c_str(), id_hash.c_str());
-      api.begin(id_hash.c_str(), false); // open as read/write
+      LOGD("Opening prefs %s for writing", schedule_id.c_str());
+      //api.begin(id_hash.c_str(), false); // open as read/write
+      
 
       if (crontab_changed) {
         LOGI("Saving crontab to prefs: '%s'", crontab.c_str());
-        api.putString("crontab", String(crontab.c_str()));
+        //api.putString("crontab", String(crontab.c_str()));
+        prefs.crontab_pref.save(crontab);
       }
 
       if (remember_next_changed) {
         LOGI("Saving remember_next to prefs: %d", remember_next);
-        api.putBool("remember_next", remember_next);
+        //api.putBool("remember_next", remember_next);
+        prefs.remember_next_pref.save(&remember_next);
       }
 
       if (cronnext_changed) {
         LOGI("Saving cronnext to prefs: %lld", (long long)cronnext);
-        api.putLong64("cronnext", cronnext);
+        //api.putLong64("cronnext", cronnext);
+        prefs.cronnext_pref.save(&cronnext);
       }
 
       if (bypass_changed) {
         LOGI("Saving bypass to prefs: %i", bypass);
-        api.putBool("bypass", bypass);
+        //api.putBool("bypass", bypass);
+        prefs.bypass_pref.save(&bypass);
       }
-
-      api.end();
+      
+      
+      //api.end();
 
     } // if any changes
   } // savePrefs()

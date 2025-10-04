@@ -73,7 +73,7 @@ protected:
   // So if user runtime settings get lost or botched, their setup will always revert
   // to their configured defaults. See the setXxxDefault() methods below.
   
-  String        crontab_default;
+  std::string   crontab_default;
   bool          bypass_default;
   bool          remember_next_default;
   
@@ -393,7 +393,7 @@ public:
   }
   
   
-  void setCrontabDefault(String val) {
+  void setCrontabDefault(std::string val) {
     crontab_default = val;
   }
   
