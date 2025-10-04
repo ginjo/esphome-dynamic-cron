@@ -60,15 +60,15 @@ public:
   double              save_prefs_interval; // seconds
   
   // These hold pointers to the subcomponents.
-	BypassSwitch        *bypass_switch{nullptr};
-	RememberNextSwitch  *remember_next_switch{nullptr};
-	CronNextSensor      *cron_next_sensor{nullptr};
-	CrontabText         *crontab_text{nullptr};
-	//   
-	//   switch_::Switch        		*bypass_switch{nullptr};
-	//   switch_::Switch						*remember_next_switch{nullptr};
-	//   text_sensor::TextSensor 	*cron_next_sensor{nullptr};
-	//   text::Text    						*crontab_text{nullptr};
+  BypassSwitch        *bypass_switch{nullptr};
+  RememberNextSwitch  *remember_next_switch{nullptr};
+  CronNextSensor      *cron_next_sensor{nullptr};
+  CrontabText         *crontab_text{nullptr};
+  //   
+  //   switch_::Switch            *bypass_switch{nullptr};
+  //   switch_::Switch            *remember_next_switch{nullptr};
+  //   text_sensor::TextSensor   *cron_next_sensor{nullptr};
+  //   text::Text                *crontab_text{nullptr};
   
   // Macro for defining setters for the above entity pointer variables.
   #define DEFINE_SETTER(MemberType, MemberName) \
@@ -77,12 +77,12 @@ public:
   DEFINE_SETTER(BypassSwitch, bypass_switch)
   DEFINE_SETTER(RememberNextSwitch, remember_next_switch)
   DEFINE_SETTER(CronNextSensor, cron_next_sensor)
-	DEFINE_SETTER(CrontabText, crontab_text)
+  DEFINE_SETTER(CrontabText, crontab_text)
   
   bool                      last_bypass_state = 0;
   bool                      last_remember_next_state = 0;
-	std::string               last_cron_next_state = "";
-	std::string               last_crontab_text_state = "";
+  std::string               last_cron_next_state = "";
+  std::string               last_crontab_text_state = "";
   
   // Custom constructor method to create Schedule object.
   // NOTE: The function-pointer argument must have NO captures, if it's receiving a lambda.
@@ -107,10 +107,10 @@ public:
 
   // Esphome Component overrides
   void setup() override {
-  	// Disable for production
-		//printVersion();
-		//LOGV("About to call timeIsValid() in Schedule.setup()");
-		
+    // Disable for production
+    //printVersion();
+    //LOGV("About to call timeIsValid() in Schedule.setup()");
+    
     if (timeIsValid() && !setup_complete) {
       loadPrefs();
 
@@ -143,16 +143,16 @@ public:
     }
     
     else {
-    	if (seconds_since_last_cron_loop > cron_loop_interval) {
-      	setup();
-      	cron_loop_previous_time = std::time(NULL);
+      if (seconds_since_last_cron_loop > cron_loop_interval) {
+        setup();
+        cron_loop_previous_time = std::time(NULL);
       }
     }
     
-		updateEntityData(bypass_switch, last_bypass_state, getBypass());
-		updateEntityData(remember_next_switch, last_remember_next_state, getRememberNext());
-		updateEntityData(cron_next_sensor, last_cron_next_state, cronNextString("---"));
-		updateEntityData(crontab_text, last_crontab_text_state, getCrontab());
+    updateEntityData(bypass_switch, last_bypass_state, getBypass());
+    updateEntityData(remember_next_switch, last_remember_next_state, getRememberNext());
+    updateEntityData(cron_next_sensor, last_cron_next_state, cronNextString("---"));
+    updateEntityData(crontab_text, last_crontab_text_state, getCrontab());
   }
   
   
@@ -412,24 +412,24 @@ protected:
     bool rslt_final = rslt_parent && rslt_esp;
     
     // What is this for?
-		//     if (rslt_final) {
-		//       LOGV("timeIsValid() using additional check with ESPTime: %d", rslt_final);
-		//     } else {
-		//       LOGV("timeIsValid() using additional check with ESPTime: %d", rslt_final);
-		//     }
+    //     if (rslt_final) {
+    //       LOGV("timeIsValid() using additional check with ESPTime: %d", rslt_final);
+    //     } else {
+    //       LOGV("timeIsValid() using additional check with ESPTime: %d", rslt_final);
+    //     }
     
     return rslt_final;
   }
   
   
-	template<typename EntityT, typename StateT>
-	void updateEntityData(EntityT *entity, StateT &last_state, const StateT &new_state) {
-		if (!entity) return;  // guard against null
-		if (new_state != last_state) {
-			entity->publish_state(new_state);
-			last_state = new_state;
-		}
-	}
+  template<typename EntityT, typename StateT>
+  void updateEntityData(EntityT *entity, StateT &last_state, const StateT &new_state) {
+    if (!entity) return;  // guard against null
+    if (new_state != last_state) {
+      entity->publish_state(new_state);
+      last_state = new_state;
+    }
+  }
 
 }; // Schedule class
 
@@ -450,13 +450,13 @@ public:
   void setup() override {
     //set_disabled_by_default(false);
     set_icon("mdi:timer-off-outline");
-		// set_restore_mode(switch_::SWITCH_RESTORE_DISABLED);
+    // set_restore_mode(switch_::SWITCH_RESTORE_DISABLED);
     LOGV("get_object_id(): %s", get_object_id().c_str());
   }
-	
-	void set_schedule(Schedule *_schedule) {
-		schedule = _schedule;
-	}
+  
+  void set_schedule(Schedule *_schedule) {
+    schedule = _schedule;
+  }
   
   void write_state(bool _state) {
     LOGD("BypassSwitch::write_state(): %d", _state);
@@ -473,15 +473,15 @@ public:
   bool last_state{0};
 
   void setup() override {
-  	//set_disabled_by_default(false);
+    //set_disabled_by_default(false);
     set_icon("mdi:memory");
     //set_restore_mode(switch_::SWITCH_RESTORE_DISABLED);
     LOGV("get_object_id(): %s", get_object_id().c_str());
   }
 
-	void set_schedule(Schedule *_schedule) {
-		schedule = _schedule;
-	}
+  void set_schedule(Schedule *_schedule) {
+    schedule = _schedule;
+  }
   
   void write_state(bool _state) {
     LOGD("RememberNextSwitch::write_state(): %d", _state);
@@ -502,6 +502,10 @@ public:
     set_icon("mdi:timer-outline");
     LOGV("get_object_id(): %s", get_object_id().c_str());
   }
+  
+  void set_schedule(Schedule *_schedule) {
+    schedule = _schedule;
+  }
 
 }; // CronNextSensor class
 
@@ -513,7 +517,7 @@ public:
   std::string last_state{""};
 
   void setup() override {
-  	//set_disabled_by_default(false);
+    //set_disabled_by_default(false);
     set_icon("mdi:calendar-clock-outline");
     traits.set_min_length(0);
     traits.set_max_length(255);
@@ -521,9 +525,9 @@ public:
     LOGV("get_object_id(): %s", get_object_id().c_str());
   }
 
-	void set_schedule(Schedule *_schedule) {
-		schedule = _schedule;
-	}
+  void set_schedule(Schedule *_schedule) {
+    schedule = _schedule;
+  }
   
   void control(const std::string &_state) {
     LOGV("CrontabText::control(): %d", &_state);

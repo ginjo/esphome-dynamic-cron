@@ -3,7 +3,7 @@
 namespace esphome {
   namespace dynamic_cron{
     #ifndef VERSION
-    extern std::string VERSION = "v0.2.0";
+    inline std::string VERSION = "v0.2.1";
     #endif
   }
 }
