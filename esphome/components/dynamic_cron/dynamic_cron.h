@@ -538,7 +538,7 @@ protected:
   //       them if necessary for debugging.
   //
   bool timeIsValid(std::time_t now = std::time(NULL)) {
-		// Disable this for production, otherwise will spit out huge amounts of log.
+    // Disable this for production, otherwise will spit out huge amounts of log.
     //LOGV("timeIsValid() now: %lld, TIMESTAMP: %lld", (long long)now, (long long)TIMESTAMP);
     
     // We previously tested against esptime only.
@@ -563,8 +563,8 @@ protected:
     if (! rslt) {
       LOGV("timeIsValid() FALSE with [%lld, %s]", (long long)now, timeToString(now).c_str());
     } else {
-    	// Disable this for production, otherwise will spit out huge amounts of log.
-    	//LOGV("timeIsValid() TRUE with [%lld, %s]", (long long)now, timeToString(now).c_str());
+      // Disable this for production, otherwise will spit out huge amounts of log.
+      //LOGV("timeIsValid() TRUE with [%lld, %s]", (long long)now, timeToString(now).c_str());
     };
     
     return (rslt);
