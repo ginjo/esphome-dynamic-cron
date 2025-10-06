@@ -5,12 +5,12 @@
 #include <iostream>
 #include <iomanip>
 #include <string>
-#include <ctime> // used for the time 'tm' struct
+#include <ctime> // c++ time package
 #include <regex>
 #include <vector>
 #include <map>
 #include <algorithm>
-#include <time.h>
+#include <time.h> // C time package
 #include "version.h"
 #include "logger_local.h"
 
@@ -175,7 +175,8 @@ public:
     if (cronnext == 0) {
       //std::string str(_default);
       //return str;
-      if (bad_cron_expr != "" && bypass == 0) {
+      //if (bad_cron_expr != "" && bypass == 0) {
+      if (bad_cron_expr.length() > 0 && !bypass) {
         return bad_cron_expr;
       }
       else {
@@ -221,13 +222,14 @@ public:
     //       without setting a crontab? Or will that break something?
     //       What happens now, if we set cronnext manually with an empty crontab?
     
-    if (crontab == "" || cronnext == 0 || bypass) {
+    //if (crontab == "" || cronnext == 0 || bypass) {
+    if (crontab.length() == 0 || cronnext == 0 || bypass) {
       out = false;
     } else {
       out = (std::difftime(cronnext, now) < 0);
     }
     
-    LOGV("cronNextExpired() cronnext, now: %s, %s", timeToString(cronnext).c_str(), timeToString(now).c_str());
+    LOGV("cronNextExpired() cronnext: '%s', now: '%s'", timeToString(cronnext).c_str(), timeToString(now).c_str());
     LOGV("cronNextExpired() result: %d", out);
     
     return out;
@@ -242,43 +244,50 @@ public:
 
   // Sets cronnext time_t from crontab field.
   //
-  void setCronNext() {
+  virtual std::time_t setCronNext() {
     if (timeIsValid()) {  // If system time is not valid, skip all of this.
-      LOGV("setCronNext() --> timeIsValid(): TRUE");
-      if (crontab == (std::string)"" || bypass) {
+      LOGV("setCronNext() --> timeIsValid(crnt-time): TRUE");
+      //if (crontab == (std::string)"" || bypass) {
+      if (crontab.length() == 0 || bypass) {
         cronnext = 0;
       }
       else {
         cronnext = cronNextCalc();
       }
       
-      LOGI("Set cronnext [%lld, %s]",
-            (long long)cronnext,
-            timeToString(cronnext).c_str()
+      LOGD("setCronNet() crontab: '%s', bypass: '%d', remember: '%d', now-raw: '%lld', now-str: %s",
+        crontab.c_str(),
+        bypass,
+        remember_next,
+        (long long)timeNow(),
+        timeToString(timeNow()).c_str()
       );
-      LOGD("Set cronnext vars, crontab: %s, bypass: %d, remember: %d, now: %lld, %s",
-            crontab.c_str(),
-            bypass,
-            remember_next,
-            (long long)timeNow(),
-            timeToString(timeNow()).c_str()
+      
+      LOGI("Set cronnext raw: '%lld', string: '%s'",
+        (long long)cronnext,
+        timeToString(cronnext).c_str()
       );
+
     }
-    
-    else {
-      LOGW("Set cronnext failed, crontab: %s, bypass: %d, remember: %d, now: %lld",
-            crontab.c_str(),
-            bypass,
-            remember_next,
-            (long long)timeNow()
-      );
-    }
+  
+    // else {
+    //   LOGW("Set cronnext failed, crontab: '%s', bypass: '%d', remember: '%d', now: '%lld'",
+    //         crontab.c_str(),
+    //         bypass,
+    //         remember_next,
+    //         (long long)timeNow()
+    //   );
+    // }
+  
+    return cronnext;
   }
 
 
   // Experimental overload sets cron_next from user input time_t.
   // The design logic was: if input is valid-time, ! bypass, > now, < cronNextCalc(), then cronnext=input;
   // however it might not be exactly that in the code.
+  //
+  // This is not currently used.
   //
   // To get time_t from user input string, use:
   // 
@@ -324,7 +333,7 @@ public:
 
 
   // Sets crontab with given string.
-  std::string setCrontab(std::string str) {
+  virtual std::string setCrontab(std::string str) {
     crontab = str;
     LOGI("Set crontab '%s'", crontab.c_str());
     setCronNext();
@@ -339,7 +348,7 @@ public:
 
 
   // Sets bypass bool field and resets cron next accordingly.
-  bool setBypass(bool val) {
+  virtual bool setBypass(bool val) {
     bypass = val;
     LOGI("Set bypass '%d'", bypass);
     setCronNext();
@@ -353,7 +362,7 @@ public:
 
 
   // Sets remember_next bool field.
-  bool setRememberNext(bool val) {
+  virtual bool setRememberNext(bool val) {
     remember_next = val;
     LOGI("Set remember-next '%d'", remember_next);
     return val;
@@ -488,6 +497,11 @@ protected:
   // Compares cronnext with current time and calls lambda.
   // Calls savePrefs(). Update: savePrefs() no longer called here. See dynamic_cron_esphome.h
   void cronLoop() {
+    //   if (! timeIsValid(cronnext)) {
+    //     LOGD("cronLoop(): cronnext '%lld' not valid, calling setCronNext()", cronnext);
+    //     setCronNext();
+    //   }
+    
     if (! bypass && timeIsValid() && cronNextExpired()) {
       LOGI("%s cron schedule calling action(s)", schedule_name.c_str());
       bool result = target_action_fptr();
@@ -500,11 +514,13 @@ protected:
 
   // Gets next time_t, given cron expression(s) string in crontab.
   std::time_t cronNextCalc(std::string _crontab = "", std::time_t ref_time = 0) {
-    if (_crontab == ""){ _crontab = crontab; }
+    //if (_crontab == ""){ _crontab = crontab; }
+    if (_crontab.length() == 0){ _crontab = crontab; }
     if (ref_time == 0) { ref_time = timeNow(); }
 
     // Returns 0 if no crontab or ref_time.
-    if (_crontab == "" || ref_time == 0) { return 0; }
+    //if (_crontab == "" || ref_time == 0) { return 0; }
+    if (_crontab.length() == 0 || ref_time == 0) { return 0; }
 
     // Requests sorted vector of nexts given crontab parsing string regex.
     std::string regex_str = " *\\| *";
@@ -522,6 +538,8 @@ protected:
 
 
   // Returns current time as time_t.
+  // TODO: Do we really need this?
+  // I guess it's a way to encapsulate a standard way of getting current time.
   std::time_t timeNow() {
     return std::time(NULL);
   }
@@ -539,29 +557,38 @@ protected:
   //
   bool timeIsValid(std::time_t now = std::time(NULL)) {
     // Disable this for production, otherwise will spit out huge amounts of log.
-    //LOGV("timeIsValid() now: %lld, TIMESTAMP: %lld", (long long)now, (long long)TIMESTAMP);
+    //LOGV("timeIsValid() time: %lld, TIMESTAMP: %lld", (long long)now, (long long)TIMESTAMP);
     
     // We previously tested against esptime only.
     //return id(esptime).now().is_valid();
     // Now we use it in the Schedule::timeIsValid() function (other file).
     
-    // Gets time independent of esp functions.
-    struct tm now_tm;
-    now_tm = *localtime(&now);
+    //     // localtime() can be problematic here if given invalid time.
+    //
+    //     // Gets time independent of esp functions.
+    //     struct tm now_tm;
+    //     now_tm = *localtime(&now);
+    // 
+    //     // 1970 is the start of 'epoch' time.
+    //     // tm_year gives us years sine 1900. 
+    //     bool rslt = (
+    //       now > 0 &&
+    //       (now_tm.tm_year + 1900) > 2019 &&
+    //       std::difftime(now, TIMESTAMP) >= 0
+    //     );
 
-    // 1970 is the start of 'epoch' time.
-    // tm_year gives us years sine 1900. 
     bool rslt = (
       now > 0 &&
-      (now_tm.tm_year + 1900) > 2019 &&
+      //now > 946684800 &&  // Jan 1, 2000 (safely past epoch start issues)
+      std::difftime(now, 946684800) > 0 &&
       std::difftime(now, TIMESTAMP) >= 0
     );
-    
+
     // Disable this for production, otherwise will spit out huge amounts of log.
     //LOGV("4-timeIsValid() now: %lld, TIMESTAMP: %lld", (long long)now, (long long)TIMESTAMP);
     
     if (! rslt) {
-      LOGV("timeIsValid() FALSE with [%lld, %s]", (long long)now, timeToString(now).c_str());
+      LOGV("timeIsValid() FALSE time_t: '%lld', string: '%s'", (long long)now, timeToString(now).c_str());
     } else {
       // Disable this for production, otherwise will spit out huge amounts of log.
       //LOGV("timeIsValid() TRUE with [%lld, %s]", (long long)now, timeToString(now).c_str());
