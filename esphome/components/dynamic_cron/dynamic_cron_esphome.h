@@ -17,7 +17,6 @@
 #include "Arduino.h"
 #include <iostream>
 #include <string>
-//#include <Preferences.h>
 #include <ctime>
 
 #include "esphome/core/component.h"
@@ -155,7 +154,7 @@ public:
       setCronNext();
     }
     
-    // Push values to entity
+    // Push values to entity (have these been set up yet?)
     updateEntityData(bypass_switch, last_bypass_state, getBypass());
     updateEntityData(remember_next_switch, last_remember_next_state, getRememberNext());
     updateEntityData(cron_next_sensor, last_cron_next_state, cronNextString("---"));
@@ -177,14 +176,6 @@ public:
     double seconds_since_last_entity_update = difftime(now, entity_update_previous_time);
     //LOGV("Looping: %lld", (long long)now);
   
-    //   if (setup_complete && timeIsValid()) {
-    //     //LOGV("Looping: %lld", (long long)now);
-    //     if (seconds_since_last_cron_loop > cron_loop_interval) {
-    //       cronLoop();
-    //       cron_loop_previous_time = std::time(NULL);
-    //     }
-    //   }
-    
     if (seconds_since_last_cron_loop > cron_loop_interval) {
       
       // Only cronLoop() if we're fully set up.
@@ -201,12 +192,18 @@ public:
       cron_loop_previous_time = std::time(NULL);
     }
     
+    // Pushes data to entities periodically.
+    //
     if (seconds_since_last_entity_update > 2) {
     
       if (setup_complete) {    // && timeIsValid()) {
+        LOGV("bypass_switch last: %d, crnt: %d", last_bypass_state, getBypass());
         updateEntityData(bypass_switch, last_bypass_state, getBypass());
+        LOGV("remember_next_switch last: %d, crnt: %d", last_remember_next_state, getRememberNext());
         updateEntityData(remember_next_switch, last_remember_next_state, getRememberNext());
+        LOGV("cron_next_sensor last: %s, crnt: %s", last_cron_next_state.c_str(), cronNextString("---").c_str());
         updateEntityData(cron_next_sensor, last_cron_next_state, cronNextString("---"));
+        LOGV("crontab_text last: %s, crnt: %s", last_crontab_text_state.c_str(), getCrontab().c_str());
         updateEntityData(crontab_text, last_crontab_text_state, getCrontab());
       }
       
@@ -308,7 +305,9 @@ protected:
   template<typename EntityT, typename StateT>
   void updateEntityData(EntityT *entity, StateT &last_state, const StateT &new_state) {
     if (!entity) return;  // guard against null
+    //LOGD("updateEntityData(%s)", entity->get_object_id().c_str());
     if (new_state != last_state) {
+      LOGD("updateEntityData(%s) publishing...", entity->get_object_id().c_str());
       entity->publish_state(new_state);
       last_state = new_state;
     }

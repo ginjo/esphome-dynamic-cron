@@ -47,13 +47,13 @@ cg.add_library(
     version=None,
 )
 
-cg.add_library(
-    name="Preferences",
-    repository=None,
-    version=None,
-)
+# cg.add_library(
+#     name="Preferences",
+#     repository=None,
+#     version=None,
+# )
 
-# We need this, if we want to build/load/run Unity tests withing esphome firmware.
+# We need this, if we want to build/load/run Unity tests within esphome firmware.
 cg.add_library(
     name="Unity",
     #repository="https://github.com/ThrowTheSwitch/Unity.git",

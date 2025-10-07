@@ -3,7 +3,7 @@
 ### of demonstrating the Dynamic Cron external component.
 
 esphome:
-  name: dynamicron
+  name: DynamicCron
   friendly_name: Dynamic Cron Scheduler
   on_boot:
     - then:

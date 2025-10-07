@@ -32,7 +32,7 @@ inline std::string TIME_FORMAT = "%Y-%m-%d %H:%M:%S";
 void printVersion() {
   //LoggerLocal<void>::SLOGI("dynamic_cron", "version: %s, firmware build: %lld", VERSION.c_str(), (long long)TIMESTAMP);
   //SLOGI("dynamic_cron", "version: %s, firmware build: %lld", VERSION.c_str(), (long long)TIMESTAMP);
-  printf("DynamiCron version: %s, firmware build: %lld\n", VERSION.c_str(), (long long)TIMESTAMP);
+  printf("DynamicCron version: %s, firmware build: %lld\n", VERSION.c_str(), (long long)TIMESTAMP);
 }
 
 
@@ -255,7 +255,14 @@ public:
         cronnext = cronNextCalc();
       }
       
-      LOGD("setCronNet() crontab: '%s', bypass: '%d', remember: '%d', now-raw: '%lld', now-str: %s",
+      LOGI("Setting next run: %s", timeToString(cronnext).c_str());
+      
+      LOGD("Set cronnext, raw: '%lld', string: '%s'",
+        (long long)cronnext,
+        timeToString(cronnext).c_str()
+      );
+      
+      LOGD("setCronNext() crontab: '%s', bypass: '%d', remember: '%d', now-raw: '%lld', now-str: %s",
         crontab.c_str(),
         bypass,
         remember_next,
@@ -263,10 +270,7 @@ public:
         timeToString(timeNow()).c_str()
       );
       
-      LOGI("Set cronnext raw: '%lld', string: '%s'",
-        (long long)cronnext,
-        timeToString(cronnext).c_str()
-      );
+
 
     }
   
