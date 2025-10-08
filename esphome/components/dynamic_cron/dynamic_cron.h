@@ -65,9 +65,6 @@ protected:
   // and then make the lambda-build in python pass in the captures '[=]'.
   // See here for discussion of captures in esphome: https://github.com/esphome/issues/issues/249
   bool(*target_action_fptr)();
-  
-  // TODO: Can/should we move this to dynamic_cron_esphome.h, as it has no use in this core file?
-  bool          setup_complete;
 
   // These default fields are what hold the user input from the yaml config in esphome.
   // So if user runtime settings get lost or botched, their setup will always revert
@@ -104,11 +101,8 @@ public:
     remember_next(false),
     remember_next_default(false),
     target_action_fptr(_target_action_fptr),
-    //loop_interval(15),
     id_hash(""),
-    time_format(TIME_FORMAT),
-    //LoggerLocal<ScheduleCore>(_name),
-    setup_complete(false)
+    time_format(TIME_FORMAT)
   {
     id_hash = GetHash(schedule_id);
     LOGV("Initializing ScheduleCore object %s %s", _id.c_str(), id_hash.c_str());
@@ -229,8 +223,7 @@ public:
       out = (std::difftime(cronnext, now) < 0);
     }
     
-    LOGV("cronNextExpired() cronnext: '%s', now: '%s'", timeToString(cronnext).c_str(), timeToString(now).c_str());
-    LOGV("cronNextExpired() result: %d", out);
+    LOGV("cronNextExpired() %d, cronnext: '%s', now: '%s'", out, timeToString(cronnext).c_str(), timeToString(now).c_str());
     
     return out;
   }
@@ -262,7 +255,7 @@ public:
         timeToString(cronnext).c_str()
       );
       
-      LOGD("setCronNext() crontab: '%s', bypass: '%d', remember: '%d', now-raw: '%lld', now-str: %s",
+      LOGV("setCronNext() crontab: '%s', bypass: '%d', remember: '%d', now-raw: '%lld', now-str: %s",
         crontab.c_str(),
         bypass,
         remember_next,

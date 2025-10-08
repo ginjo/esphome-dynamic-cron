@@ -48,7 +48,7 @@ CREATE_LOG_FUNC_FREE(W)
 CREATE_LOG_FUNC_FREE(I)
 CREATE_LOG_FUNC_FREE(D)
 CREATE_LOG_FUNC_FREE(V)
-//CREATE_LOG_FUNC(VV)
+//CREATE_LOG_FUNC_FREE(VV)
 
 
 // Templated logger class so we can access the derived instances from within it.

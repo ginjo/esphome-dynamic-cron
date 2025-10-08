@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "Arduino.h"
+//#include "Arduino.h"
 #include <iostream>
 #include <string>
 #include <ctime>
@@ -46,38 +46,42 @@ class RememberNextSwitch;
 class CronNextSensor;
 class CrontabText;
 
-const size_t            CRONTAB_MAX_LEN = 128;
+const size_t                           CRONTAB_MAX_LEN = 128;
 
 
 class Schedule : public Component, public ScheduleCore {
 
 protected:
   // Loop trackers
-  std::time_t           cron_loop_previous_time;
-  std::time_t           entity_update_previous_time;
+  std::time_t                          cron_loop_previous_time;
+  std::time_t                          entity_update_previous_time;
   
   // If true, clears prefs at first boot after flash.
-  bool                  clear_prefs;
+  bool                                 clear_prefs;
+  
+  // Preference set timestamp
+  std::time_t                          initial_stamp;
   
   // Preference objects
-  MyPreference<std::time_t>         initialized_pref;
-  MyPreference<bool>                bypass_pref;
-  MyPreference<bool>                remember_next_pref;
-  MyPreference<std::time_t>         cronnext_pref;
-  StringPreference<CRONTAB_MAX_LEN> crontab_pref;
+  MyPreference<std::time_t>            initial_stamp_pref;
+  MyPreference<bool>                   bypass_pref;
+  MyPreference<bool>                   remember_next_pref;
+  MyPreference<std::time_t>            cronnext_pref;
+  StringPreference<CRONTAB_MAX_LEN>    crontab_pref;
 
+  bool                                 setup_complete;
 
 public:
-  double              cron_loop_interval; // seconds
-  //double              save_prefs_interval; // seconds
+  double                               cron_loop_interval; // seconds
+  //double                              save_prefs_interval; // seconds
   
   // These hold pointers to the subcomponents.
-  BypassSwitch        *bypass_switch{nullptr};
-  RememberNextSwitch  *remember_next_switch{nullptr};
-  CronNextSensor      *cron_next_sensor{nullptr};
+  BypassSwitch                         *bypass_switch{nullptr};
+  RememberNextSwitch                   *remember_next_switch{nullptr};
+  CronNextSensor                       *cron_next_sensor{nullptr};
   // TODO: Change CrontabText and crontab_text to CrontabTextField, crontab_text_field
   // Don't forget to update __init__.py
-  CrontabText         *crontab_text{nullptr};
+  CrontabText                          *crontab_text{nullptr};
   
   // Macro for defining setters for the above entity pointer variables.
   #define DEFINE_SETTER(MemberType, MemberName) \
@@ -88,10 +92,10 @@ public:
   DEFINE_SETTER(CronNextSensor, cron_next_sensor)
   DEFINE_SETTER(CrontabText, crontab_text)
   
-  bool                      last_bypass_state = false;
-  bool                      last_remember_next_state = false;
-  std::string               last_cron_next_state = "";
-  std::string               last_crontab_text_state = "";
+  bool                                 last_bypass_state;
+  bool                                 last_remember_next_state;
+  std::string                          last_cron_next_state;
+  std::string                          last_crontab_text_state;
   
   // Custom constructor method to create Schedule object.
   // NOTE: The function-pointer argument must have NO captures, if it's receiving a lambda.
@@ -105,12 +109,16 @@ public:
   ) :
     ScheduleCore(_name, _id, _target_action_fptr),
     cron_loop_interval(10),
-    //save_prefs_interval(60),
-    clear_prefs(false)
+    clear_prefs(false),
+    setup_complete(false),
+    last_bypass_state(false),
+    last_remember_next_state(false),
+    last_cron_next_state(""),
+    last_crontab_text_state("")
   {
     LOGI("Constructing cron schedule '%s' %s", _name.c_str(), _id.c_str());
     cron_loop_previous_time = std::time(NULL);
-    //save_prefs_previous_time = std::time(NULL);
+    entity_update_previous_time = std::time(NULL);
   } // end Schedule(...).
 
 
@@ -119,21 +127,26 @@ public:
 
     LOGD("Setup beginning for '%s' %s", schedule_name.c_str(), schedule_id.c_str());
     
+    // Init prefs timestamp
+    initial_stamp_pref.init(schedule_id);
+    initial_stamp = initial_stamp_pref.load_with_default(TIMESTAMP);
+    if (clear_prefs && initial_stamp != TIMESTAMP) {
+      initial_stamp = TIMESTAMP;
+      initial_stamp_pref.save(initial_stamp);
+    }
+    
     // Init Bypass prefs
-    //bypass_pref.init(global_preferences, fnv1a_hash((schedule_id + "_bypass").c_str()));
-    bypass_pref.init(schedule_id + "_bypass");
+    bypass_pref.init(schedule_id + "_bypass_" + std::to_string(initial_stamp));
     bypass = bypass_pref.load_with_default(bypass_default);
     LOGI("Loaded bypass: %d", bypass);
     
     // Init RememberNext prefs
-    //remember_next_pref.init(global_preferences, fnv1a_hash((schedule_id + "_remember").c_str()));
-    remember_next_pref.init(schedule_id + "_remember");
+    remember_next_pref.init(schedule_id + "_remember_" + std::to_string(initial_stamp));
     remember_next = remember_next_pref.load_with_default(remember_next_default);
     LOGI("Loaded remember_next: %d", remember_next);
     
     // Init CronNext prefs
-    //cronnext_pref.init(global_preferences, fnv1a_hash((schedule_id + "_cronnext").c_str()));
-    cronnext_pref.init(schedule_id + "_cronnext");
+    cronnext_pref.init(schedule_id + "_cronnext_" + std::to_string(initial_stamp));
       if (remember_next && !bypass) {
         cronnext = cronnext_pref.load_with_default(0);
       } else {
@@ -143,29 +156,28 @@ public:
     LOGI("Loaded cronnext: %lld", (long long)cronnext);
     
     // Init Crontab prefs
-    //crontab_pref.init(global_preferences, fnv1a_hash((schedule_id + "_crontab").c_str()));
-    crontab_pref.init(schedule_id + "_crontab");
+    crontab_pref.init(schedule_id + "_crontab_" + std::to_string(initial_stamp));
     crontab = crontab_pref.load_with_default(crontab_default);
     LOGI("Loaded crontab: %s", crontab.c_str());
 
-    // This isn't helping here, since system time is not yet set.
-    if (timeIsValid() && !timeIsValid(cronnext) && !bypass) {
-      LOGV("Cronnext not a valid time, calling setCronNext()");
-      setCronNext();
-    }
-    
-    // Push values to entity (have these been set up yet?)
-    updateEntityData(bypass_switch, last_bypass_state, getBypass());
-    updateEntityData(remember_next_switch, last_remember_next_state, getRememberNext());
-    updateEntityData(cron_next_sensor, last_cron_next_state, cronNextString("---"));
-    updateEntityData(crontab_text, last_crontab_text_state, getCrontab());
     
     if (timeIsValid()) {
+      
+      // Set cronnext if needed
+      //if (!timeIsValid(cronnext) && !bypass) setCronNext();
+      if (!timeIsValid(cronnext)) setCronNext();
+      
+      // Push values to entity.
+      updateEntityData(bypass_switch, last_bypass_state, getBypass());
+      updateEntityData(remember_next_switch, last_remember_next_state, getRememberNext());
+      updateEntityData(cron_next_sensor, last_cron_next_state, cronNextString("---"));
+      updateEntityData(crontab_text, last_crontab_text_state, getCrontab());
+      
       setup_complete = true;
-      LOGD("Setup complete for '%s' %s", schedule_name.c_str(), schedule_id.c_str());
+      LOGD("[setup()] Setup complete for '%s' %s", schedule_name.c_str(), schedule_id.c_str());
     }
     else {
-      LOGD("Setup partially complete for '%s' %s", schedule_name.c_str(), schedule_id.c_str());
+      LOGD("[setup()] Setup partially complete for '%s' %s", schedule_name.c_str(), schedule_id.c_str());
     }
   } // setup()
   
@@ -181,22 +193,7 @@ public:
       // Only cronLoop() if we're fully set up.
       if (setup_complete && timeIsValid()) {
         cronLoop();
-      }
-      // Else if time is valid, do stuff and mark setup as complete.
-      else if (timeIsValid()) {
-        if (!timeIsValid(cronnext) && !bypass) setCronNext();
-        setup_complete = true;
-        LOGD("Setup complete for '%s' %s", schedule_name.c_str(), schedule_id.c_str());
-      }
-      
-      cron_loop_previous_time = std::time(NULL);
-    }
-    
-    // Pushes data to entities periodically.
-    //
-    if (seconds_since_last_entity_update > 2) {
-    
-      if (setup_complete) {    // && timeIsValid()) {
+        
         LOGV("bypass_switch last: %d, crnt: %d", last_bypass_state, getBypass());
         updateEntityData(bypass_switch, last_bypass_state, getBypass());
         LOGV("remember_next_switch last: %d, crnt: %d", last_remember_next_state, getRememberNext());
@@ -207,8 +204,35 @@ public:
         updateEntityData(crontab_text, last_crontab_text_state, getCrontab());
       }
       
-      entity_update_previous_time = std::time(NULL);
+      // Else if time is valid, do stuff and mark setup as complete.
+      // This will only happen 0 or 1 times.
+      else if (timeIsValid()) {
+        setup_complete = true;
+        //if (!timeIsValid(cronnext) && !bypass) setCronNext();
+        if (!timeIsValid(cronnext)) setCronNext();
+        LOGD("[loop()] Setup complete for '%s' %s", schedule_name.c_str(), schedule_id.c_str());
+      }
+      
+      cron_loop_previous_time = std::time(NULL);
     }
+    
+    // Pushes data to entities periodically.
+    //
+    // if (seconds_since_last_entity_update > 2) {
+    // 
+    //   if (setup_complete) {    // && timeIsValid()) {
+    //     LOGV("bypass_switch last: %d, crnt: %d", last_bypass_state, getBypass());
+    //     updateEntityData(bypass_switch, last_bypass_state, getBypass());
+    //     LOGV("remember_next_switch last: %d, crnt: %d", last_remember_next_state, getRememberNext());
+    //     updateEntityData(remember_next_switch, last_remember_next_state, getRememberNext());
+    //     LOGV("cron_next_sensor last: %s, crnt: %s", last_cron_next_state.c_str(), cronNextString("---").c_str());
+    //     updateEntityData(cron_next_sensor, last_cron_next_state, cronNextString("---"));
+    //     LOGV("crontab_text last: %s, crnt: %s", last_crontab_text_state.c_str(), getCrontab().c_str());
+    //     updateEntityData(crontab_text, last_crontab_text_state, getCrontab());
+    //   }
+    //   
+    //   entity_update_previous_time = std::time(NULL);
+    // }
 
   } // loop()
   
@@ -232,6 +256,7 @@ public:
   bool setBypass(bool val) override {
     // Note that sched-core setBypass() always calls setCronNext().
     bool rslt = ScheduleCore::setBypass(val);
+    updateEntityData(bypass_switch, last_bypass_state, rslt);
     bypass_pref.save(rslt);
     return rslt;
   }
@@ -241,6 +266,7 @@ public:
     remember_next_pref.save(rslt);
     // If remember_next is toggled, we always want to write something to cronnext_pref,
     // unless bypass is true (if bypass is true, cronnext and cronnext_pref should always be 0).
+    updateEntityData(remember_next_switch, last_remember_next_state, rslt);
     if (!bypass) {
       if (remember_next == false) {
         cronnext_pref.save(0);
@@ -254,6 +280,7 @@ public:
   
   std::time_t setCronNext() override {
     std::time_t rslt = ScheduleCore::setCronNext();
+    updateEntityData(cron_next_sensor, last_cron_next_state, cronNextString("---"));
     // If cronnext is changed, we only save it to prefs if remember next, or if it's 0.
     if (rslt == 0 || remember_next) cronnext_pref.save(rslt);
     return rslt;
@@ -262,6 +289,7 @@ public:
   std::string setCrontab(std::string str) override {
     // Note that sched-core setCrontab() always calls setCronNext().
     std::string rslt = ScheduleCore::setCrontab(str);
+    updateEntityData(crontab_text, last_crontab_text_state,rslt);
     crontab_pref.save(rslt);
     return rslt;
   }
@@ -402,7 +430,7 @@ public:
     //set_disabled_by_default(false);
     set_icon("mdi:calendar-clock-outline");
     traits.set_min_length(0);
-    traits.set_max_length(255);
+    traits.set_max_length(CRONTAB_MAX_LEN);
     traits.set_mode(text::TEXT_MODE_TEXT);
     LOGV("get_object_id(): %s", get_object_id().c_str());
   }
