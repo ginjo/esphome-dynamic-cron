@@ -104,9 +104,9 @@ CONFIG_SCHEMA = cv.Schema({
 assign_global_timestamp = cg.RawStatement(f'esphome::dynamic_cron::TIMESTAMP = {round(time())};\n')
 cg.add(assign_global_timestamp)
 
-# This might now print at the beginning of the main.cpp setup() function, loggin not setup yet.
-print_version = cg.RawStatement(f'esphome::dynamic_cron::printVersion();\n')
-cg.add(print_version)
+# This might not print at the beginning of the main.cpp setup() function, loggin not setup yet.
+#print_version = cg.RawStatement(f'esphome::dynamic_cron::printVersion();\n')
+#cg.add(print_version)
 
 # print(CONFIG_SCHEMA)
 # print(yaml.dump(CONFIG_SCHEMA, default_flow_style=False, sort_keys=False))

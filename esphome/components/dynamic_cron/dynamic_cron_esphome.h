@@ -48,6 +48,10 @@ class CrontabText;
 
 inline const size_t                    CRONTAB_MAX_LEN = 128;
 
+// Static variable to track if the version has been logged at boot.
+static bool                            version_logged = false;
+
+
 
 class Schedule : public Component, public ScheduleCore {
 
@@ -122,6 +126,11 @@ public:
 
   // Esphome Component overrides
   void setup() override {
+
+    if (!version_logged) {
+      printVersion();
+      version_logged = true;
+    }
 
     LOGD("Setup beginning for '%s' %s", schedule_name.c_str(), schedule_id.c_str());
     
