@@ -1,6 +1,12 @@
 # CHANGELOG.md
 
 
+## 0.2.1 (2025-10-04)
+
+Fix:
+  
+  - Fixed missing code and typo that prevented successful compilation.
+
 ## 0.2.0 (2025-09-30)
 
 Compatibility:

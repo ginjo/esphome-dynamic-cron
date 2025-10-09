@@ -1,7 +1,7 @@
 // Additional functions for esphome testing.
 // This test file and the dynamic_cron_esphome.h source file will ONLY
-// run on esp32 hardware with the 'esphome' test environment,
-// and not in the 'native' test environment.
+// run on esp32 hardware if you run the 'esphome' test environment.
+// This will NOT run in the 'native' test environment.
 
 #pragma once
 

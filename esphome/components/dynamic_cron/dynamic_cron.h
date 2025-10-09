@@ -30,9 +30,9 @@ inline std::time_t TIMESTAMP = 1234567890;
 inline std::string TIME_FORMAT = "%Y-%m-%d %H:%M:%S";
 
 void printVersion() {
-  //LoggerLocal<void>::SLOGI("dynamic_cron", "version: %s, firmware build: %lld", VERSION.c_str(), (long long)TIMESTAMP);
-  //SLOGI("dynamic_cron", "version: %s, firmware build: %lld", VERSION.c_str(), (long long)TIMESTAMP);
   printf("DynamicCron version: %s, firmware build: %lld\n", VERSION.c_str(), (long long)TIMESTAMP);
+  // Logging is not yet set up here.
+  //ESP_LOGI("DynamicCron", "version: %s, firmware build: %lld\n", VERSION.c_str(), (long long)TIMESTAMP);
 }
 
 

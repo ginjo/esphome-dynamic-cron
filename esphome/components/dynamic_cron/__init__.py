@@ -8,6 +8,7 @@ from esphome.const import (
                       CONF_LAMBDA,
                       CONF_NAME,
                       CONF_MODE,
+                      CONF_ICON
                       )
 
 import yaml
@@ -83,6 +84,7 @@ CONFIG_SCHEMA = cv.Schema({
     # TODO: Refactor default entity icons.
     # Supposedly, I can add defaults after the class name, like this:
     #   switch.switch_schema(BypassSwitch, icon="mdi:chip")
+    # NOPE, this doesn't work!!! No icon settings are made anywhere in main.cpp
     #
     cv.Optional(CONF_BYPASS_SWITCH): switch.switch_schema(BypassSwitch),
     cv.Optional(CONF_REMEMBER_NEXT_SWITCH): switch.switch_schema(RememberNextSwitch),
@@ -102,7 +104,7 @@ CONFIG_SCHEMA = cv.Schema({
 assign_global_timestamp = cg.RawStatement(f'esphome::dynamic_cron::TIMESTAMP = {round(time())};\n')
 cg.add(assign_global_timestamp)
 
-# This won't print at the beginning of the main.cpp setup() function, loggin not setup yet.
+# This might now print at the beginning of the main.cpp setup() function, loggin not setup yet.
 print_version = cg.RawStatement(f'esphome::dynamic_cron::printVersion();\n')
 cg.add(print_version)
 
@@ -158,6 +160,7 @@ async def to_code(config):
       sw_config = {
         CONF_NAME:    f'{schedule_name} disabled',
         CONF_ID:      f'{id_}_disabled',
+        CONF_ICON:    "mdi:timer-off-outline"
       }
       sw_config = switch.switch_schema(BypassSwitch)(sw_config)
     
@@ -176,6 +179,7 @@ async def to_code(config):
       rem_config = {
         CONF_NAME:    f'{schedule_name} remember next',
         CONF_ID:      f'{id_}_remember_next',
+        CONF_ICON:    "mdi:memory"
       }
       rem_config = switch.switch_schema(RememberNextSwitch)(rem_config)
     
@@ -191,6 +195,7 @@ async def to_code(config):
       ts_config = {
         CONF_NAME:    f'{schedule_name} next run',
         CONF_ID:      f'{id_}_next_run',
+        CONF_ICON:    "mdi:timer-outline"
       }
       ts_config = text_sensor.text_sensor_schema(CronNextSensor)(ts_config)
     
@@ -206,6 +211,7 @@ async def to_code(config):
         CONF_NAME:    f'{schedule_name} crontab',
         CONF_ID:      f'{id_}_crontab',
         CONF_MODE:    'text',
+        CONF_ICON:    "mdi:calendar-clock-outline"
       }
       txt_config = text.text_schema(CrontabText)(txt_config)
     

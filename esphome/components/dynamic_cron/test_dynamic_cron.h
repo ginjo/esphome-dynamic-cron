@@ -199,7 +199,7 @@ int RunDynamicCronTests(int max = 0) {
 // These must be top-level functions.
 
 void setUp(void) {
-  // Performed before ever test is run.
+  // Performed before every test is run.
   
   //std::cout << "SETUP\n";
   

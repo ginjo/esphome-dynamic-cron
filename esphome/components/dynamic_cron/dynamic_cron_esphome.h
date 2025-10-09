@@ -46,7 +46,7 @@ class RememberNextSwitch;
 class CronNextSensor;
 class CrontabText;
 
-const size_t                           CRONTAB_MAX_LEN = 128;
+inline const size_t                    CRONTAB_MAX_LEN = 128;
 
 
 class Schedule : public Component, public ScheduleCore {
@@ -54,7 +54,6 @@ class Schedule : public Component, public ScheduleCore {
 protected:
   // Loop trackers
   std::time_t                          cron_loop_previous_time;
-  std::time_t                          entity_update_previous_time;
   
   // If true, clears prefs at first boot after flash.
   bool                                 clear_prefs;
@@ -118,8 +117,7 @@ public:
   {
     LOGI("Constructing cron schedule '%s' %s", _name.c_str(), _id.c_str());
     cron_loop_previous_time = std::time(NULL);
-    entity_update_previous_time = std::time(NULL);
-  } // end Schedule(...).
+  } // constructor.
 
 
   // Esphome Component overrides
@@ -185,7 +183,6 @@ public:
   void loop() override {
     std::time_t now = std::time(NULL);
     double seconds_since_last_cron_loop = difftime(now, cron_loop_previous_time);
-    double seconds_since_last_entity_update = difftime(now, entity_update_previous_time);
     //LOGV("Looping: %lld", (long long)now);
   
     if (seconds_since_last_cron_loop > cron_loop_interval) {
@@ -215,24 +212,6 @@ public:
       
       cron_loop_previous_time = std::time(NULL);
     }
-    
-    // Pushes data to entities periodically.
-    //
-    // if (seconds_since_last_entity_update > 2) {
-    // 
-    //   if (setup_complete) {    // && timeIsValid()) {
-    //     LOGV("bypass_switch last: %d, crnt: %d", last_bypass_state, getBypass());
-    //     updateEntityData(bypass_switch, last_bypass_state, getBypass());
-    //     LOGV("remember_next_switch last: %d, crnt: %d", last_remember_next_state, getRememberNext());
-    //     updateEntityData(remember_next_switch, last_remember_next_state, getRememberNext());
-    //     LOGV("cron_next_sensor last: %s, crnt: %s", last_cron_next_state.c_str(), cronNextString("---").c_str());
-    //     updateEntityData(cron_next_sensor, last_cron_next_state, cronNextString("---"));
-    //     LOGV("crontab_text last: %s, crnt: %s", last_crontab_text_state.c_str(), getCrontab().c_str());
-    //     updateEntityData(crontab_text, last_crontab_text_state, getCrontab());
-    //   }
-    //   
-    //   entity_update_previous_time = std::time(NULL);
-    // }
 
   } // loop()
   
@@ -359,9 +338,9 @@ public:
   
   void setup() override {
     //set_disabled_by_default(false);
-    set_icon("mdi:timer-off-outline");
+    //set_icon("mdi:timer-off-outline");
     // set_restore_mode(switch_::SWITCH_RESTORE_DISABLED);
-    LOGV("get_object_id(): %s", get_object_id().c_str());
+    LOGV("setup(): %s", get_object_id().c_str());
   }
   
   void set_schedule(Schedule *_schedule) {
@@ -384,9 +363,9 @@ public:
 
   void setup() override {
     //set_disabled_by_default(false);
-    set_icon("mdi:memory");
+    //set_icon("mdi:memory");
     //set_restore_mode(switch_::SWITCH_RESTORE_DISABLED);
-    LOGV("get_object_id(): %s", get_object_id().c_str());
+    LOGV("setup(): %s", get_object_id().c_str());
   }
 
   void set_schedule(Schedule *_schedule) {
@@ -409,8 +388,8 @@ public:
 
   void setup() override {
     //set_disabled_by_default(false);
-    set_icon("mdi:timer-outline");
-    LOGV("get_object_id(): %s", get_object_id().c_str());
+    //set_icon("mdi:timer-outline");
+    LOGV("setup(): %s", get_object_id().c_str());
   }
   
   void set_schedule(Schedule *_schedule) {
@@ -428,11 +407,11 @@ public:
 
   void setup() override {
     //set_disabled_by_default(false);
-    set_icon("mdi:calendar-clock-outline");
+    //set_icon("mdi:calendar-clock-outline");
     traits.set_min_length(0);
     traits.set_max_length(CRONTAB_MAX_LEN);
     traits.set_mode(text::TEXT_MODE_TEXT);
-    LOGV("get_object_id(): %s", get_object_id().c_str());
+    LOGV("setup(): %s", get_object_id().c_str());
   }
 
   void set_schedule(Schedule *_schedule) {

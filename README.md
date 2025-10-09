@@ -11,7 +11,8 @@
   * Multiple cron expressions for each schedule.
   * Multiple schedules to cover any number of ESPHome recurring tasks.
   * Remembers missed trigger times after power failure or reboot.
-  * Automate trigger times entirely within ESPHome, no home-assistant required.
+  * Automate trigger times entirely within ESPHome, no Home Assistant required,
+    or use with Home Assistant.
 
   Here is an example web GUI of a generic ESPHome project that defines two
   dynamic_cron schedules.
@@ -99,8 +100,8 @@
               
   * **crontab**: string, *optional* `("")`
     
-    Sets the default `crontab` string. The `crontab` string can be edited at runtime through
-    the web interface or the API.
+    Sets the default cron expression(s) string (we refer to that here as `crontab`).
+    The `crontab` string can be edited at runtime through the web interface or the API.
     
   * **disabled**: boolean, *optional* `(false)`
     
@@ -188,14 +189,30 @@
     0 0 0,5 * * mon,wed,fri | 0 30 2 * * mon,wed,fri
     
   This translates to *every Mon, Wed, Fri at midnight, 2:30am, and 5:00am*.
+  
+  The cron expression fields are:
+  
+  * Seconds
+  * Minutes
+  * Hours
+  * Days-of-month
+  * Months
+  * Days-of-week
+  
+  Note that this component uses six-field cron expressions, with the first field
+  representing *seconds*.
 
   For supported cron expression features and syntax, see the Croncpp documentation.
   * https://github.com/mariusbancila/croncpp
     
   ### Disable Schedule
   
-  When this entity is turned ON, the schedule is disabled. No other functionality of ESPHome is affected.
-  While a schedule is disabled, no next-run time is calculated.
+  When this entity is turned ON, the schedule is disabled and no actions will be triggered.
+  No other functionality of ESPHome is affected.
+  
+  While a schedule is disabled, no next-run time is calculated, and you will see `---`
+  in the next-run-time field.
+  
   When this element is turned OFF, the schedule is activated and a new next-run time is calculated.
   
   ### Remember Next
