@@ -4,7 +4,7 @@ services:
   esphome:
     container_name: esphome
     hostname: esphome
-    image: "esphome/esphome:${ESPHOME_VERSION:-2024.7.3}"
+    image: "esphome/esphome:${ESPHOME_VERSION:-2025.9.1}"
     # This image is 50% bigger (about 643Mb).
     #image: esphome/esphome:2024.12.4
     volumes:
@@ -34,14 +34,16 @@ services:
       # Maps the location of the external component project directory on the host.
       - "$PWD:/DynamicCron:rw"
       #
-      # The src/ directory is where platformio will look for esphome sourc files.
-      # The default is the /esphome/ directory in the esphome/esphome docker image.
-      # Note that DynamicCron/src/esphome is a symlink that points to /esphome within the container.
-      - "${SRC_DIR:-$PWD/src}:/DynamicCron/src:ro"
+      # The .src/ directory is where platformio will look for esphome sourc files.
+      # Since we're using the esphome docker image, that directory is /esphome within the container.
+      # Disabled this in favor of a container startup script that inserts a symlink to /esphome.
+      #- "${SRC_DIR:-$PWD/.src}:/esphome:ro"
       #
-+     # Specifies where esphome will write build operations to.
-      - "${ESPHOME_BUILD_PATH:-$PWD/.esphome}:/DynamicCron/.esphome:rw"
-+     #
+      # Specifies where esphome will write build operations to.
+      - "${DOT_ESPHOME:-$PWD/.esphome_build}:/DynamicCron/test/esphome_config/.esphome:rw"
+      # Secrets file for the esphome test project yaml config.
+      - "$PWD/.secrets.yaml:/DynamicCron/test/esphome_config/secrets.yaml"
+      #
       # Enables timezone resolution.
       - "/etc/localtime:/etc/localtime:ro"
     environment:

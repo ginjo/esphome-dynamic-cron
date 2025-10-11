@@ -1,0 +1,113 @@
+
+### This is a basic esphome firmware definition for the sole purpose
+### of testing the DynamicCron external component.
+###
+### Maybe see here for polymorphic members vars and 'slicing':
+### https://stackoverflow.com/questions/17035951/member-variable-polymorphism-argument-by-reference
+
+esphome:
+  name: dynamicron
+  friendly_name: Dynamic Cron Scheduler Test Example
+  # includes:
+  #   - "/DynamicCron/esphome/components/dynamic_cron/test_dynamic_cron_esphome.h"
+  #   #- "dynamicron_tests.h"
+  on_boot:
+    - then:
+      - logger.log:
+          level: INFO
+          format: "Hello, my name is %s"
+          args:
+            - App.get_name().c_str()
+          # must be literal string, not templatable
+          tag: "dynamicron-test-project"
+      #- lambda: |-
+      #    esphome::dynamic_cron::printVersion();
+
+
+esp32:
+  board: esp32doit-devkit-v1
+  framework:
+    type: arduino
+
+# Enable logging
+logger: # default is DEBUG
+  level: VERBOSE
+
+# Enable Home Assistant API
+# api:
+#   reboot_timeout: 0s # Never reboot due to home-assistant connection.
+#   encryption:
+#     key: !secret api_encryption_key
+
+### Over-the-air updates
+ota:
+  - platform: esphome
+    password: !secret ota_password
+  - platform: web_server
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  reboot_timeout: 0s # Never reboot due to wifi connection.
+
+  # Enable fallback hotspot (captive portal, if that's enabled) in case wifi connection fails
+  ap:
+    ssid: "dynamicron"
+    password: !secret wifi_password
+    ap_timeout: 10s # Enable access-point ssid if can't connect to wifi ssid.
+
+web_server:
+  version: 3
+  port: 80
+  local: true
+
+# Enable wifi-setup and flashing interface if we fallback to ap mode (see ap:).
+captive_portal:
+
+# You need 'time' for any scheduler to work properly.
+time:
+  #- platform: homeassistant
+  - platform: sntp
+    servers:
+      - 0.pool.ntp.org
+      - 1.pool.ntp.org
+      - 2.pool.ntp.org
+    id: esp_time
+    #on_time_sync:
+    #  then:
+    #    - lambda:
+    #        esphome::dynamic_cron::RunDynamicCronTests(3);
+
+
+### CUSTOM / EXTERNAL COMPONENTS
+
+external_components:
+  - source:
+      type: local
+      path: /DynamicCron/esphome/components
+    refresh: 1min
+#- source:
+#    type: git
+#    url: https://github.com/ginjo/esphome-dynamic-cron
+#    ref: dev
+#  refresh: 1min # default is 1-per-day
+
+dynamic_cron:
+ - name: Lawn
+   id: lawn_schedule
+   disabled: true
+   crontab: "0 * * * * *"
+   lambda: |-
+     ESP_LOGI("lawn-schedule", "Lawn schedule lambda running @ %s", lawn_schedule->timeToString().c_str());
+     return {true};
+   #bypass_switch: {name: 'Disable Lawn Schedule'}
+ 
+ - name: Drip
+   id: drip_schedule
+   crontab: "30 * * * * *"
+   remember_next: false
+   #clear_prefs: true
+   lambda: |-
+     ESP_LOGI("drip-schedule", "Drip schedule lambda running @ %s", drip_schedule->timeToString().c_str());
+     return {true};
+   #bypass_switch: {id: 'drip_bypass', name: 'Disable Drip Schedule'}

@@ -13,5 +13,7 @@ echo "alias ll='ls -lah --color'" >> /etc/bash.bashrc
 
 apt update && apt-get install -y build-essential nano
 
+ln -s /esphome src
+
 # Execs bash, unless some other command was given.
 exec ${@:-bash}

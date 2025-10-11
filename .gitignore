@@ -2,11 +2,13 @@
 .pio/
 .platformio/
 .esphome/
+.esphome_build/
 .DS_Store
 .env
+/src
 /core
-/src/
 *.sublime-*
+*secrets.yaml
 
 # Mountain Duck, TextMate artifacts, or maybe just Mac Finder stuff.
 ._*
