@@ -39,6 +39,9 @@ services:
       # Note that DynamicCron/src/esphome is a symlink that points to /esphome within the container.
       - "${SRC_DIR:-$PWD/src}:/DynamicCron/src:ro"
       #
++     # Specifies where esphome will write build operations to.
++     - "${ESPHOME_BUILD_PATH:-$PWD/.esphome}:/DynamicCron/.esphome"
++     #
       # Enables timezone resolution.
       - "/etc/localtime:/etc/localtime:ro"
     environment:
