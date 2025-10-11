@@ -40,7 +40,7 @@ services:
       - "${SRC_DIR:-$PWD/src}:/DynamicCron/src:ro"
       #
 +     # Specifies where esphome will write build operations to.
-+     - "${ESPHOME_BUILD_PATH:-$PWD/.esphome}:/DynamicCron/.esphome"
+      - "${ESPHOME_BUILD_PATH:-$PWD/.esphome}:/DynamicCron/.esphome:rw"
 +     #
       # Enables timezone resolution.
       - "/etc/localtime:/etc/localtime:ro"
