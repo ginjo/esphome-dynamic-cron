@@ -73,10 +73,10 @@ time:
       - 1.pool.ntp.org
       - 2.pool.ntp.org
     id: esp_time
-    #on_time_sync:
-    #  then:
-    #    - lambda:
-    #        esphome::dynamic_cron::RunDynamicCronTests(3);
+    on_time_sync:
+     then:
+       - lambda:
+           esphome::dynamic_cron::RunDynamicCronTests(3);
 
 
 ### CUSTOM / EXTERNAL COMPONENTS

@@ -18,7 +18,8 @@ services:
       # Directory where platformio will store downloaded source code and library files.
       # It appears that platformio is looking in /root within the container
       # for the .platformio, so we're mapping the host .platformio to /root/.platformio
-      # within the container, and also to /DynamicCron/.platformio .
+      # within the container, and also to /DynamicCron/.platformio.
+      # TODO: Do we still need to map into /DynamicCron/, since .platformio is already there?
       # NOTE: esphome 2024.12 has started using their own fork of a portion
       # of the source code that used to be pulled directly from the platformio project.
       # See https://esphome.io/changelog/2024.12.0/
@@ -39,8 +40,11 @@ services:
       # Disabled this in favor of a container startup script that inserts a symlink to /esphome.
       #- "${SRC_DIR:-$PWD/.src}:/esphome:ro"
       #
+      # Where esphome config dir is located.
+      #- "$PWD/test/esphome_config:/config:rw"
+      #
       # Specifies where esphome will write build operations to.
-      - "${DOT_ESPHOME:-$PWD/.esphome_build}:/DynamicCron/test/esphome_config/.esphome:rw"
+      #- "${DOT_ESPHOME:-$PWD/.esphome_build}:/config/.esphome:rw"
       # Secrets file for the esphome test project yaml config.
       - "$PWD/.secrets.yaml:/DynamicCron/test/esphome_config/secrets.yaml"
       #

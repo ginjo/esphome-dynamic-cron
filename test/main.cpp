@@ -47,7 +47,7 @@
 //   https://github.com/wolfcw/libfaketime
 
 #if IS_NATIVE == 1
-  #include <ArduinoFake.h>
+//  #include <ArduinoFake.h>
 #else
   #include <Arduino.h>
 #endif
@@ -164,7 +164,7 @@ void setup() {
   // establishes connection with a board Serial interface
   // We need the preceding '::' here because there is another delay() function
   // within this same scope, provided by Arduino or Esphome.
-  ::delay(2000);
+  //::delay(2000);
 
   esphome::dynamic_cron::RunDynamicCronTests();
 }
