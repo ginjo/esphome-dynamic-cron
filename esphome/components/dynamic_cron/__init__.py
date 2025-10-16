@@ -1,4 +1,7 @@
 from time import time
+import yaml
+from esphome.cpp_generator import RawExpression
+import os
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import switch, text, text_sensor
@@ -11,7 +14,6 @@ from esphome.const import (
                       CONF_ICON
                       )
 
-import yaml
 
 # Imports do not load files or paths into the build directory.                          
 # You need to use AUTO_LOAD.
@@ -80,17 +82,23 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_CRONTAB, default=""):             cv.string,
     cv.Optional(CONF_CLEAR_PREFS, default=False):      cv.boolean,
     cv.Optional(CONF_TIME_FORMAT, default=""):         cv.string,
+    cv.Optional("feature_set", default="basic"):       cv.string,
     
-    # TODO: Refactor default entity icons.
-    # Supposedly, I can add defaults after the class name, like this:
-    #   switch.switch_schema(BypassSwitch, icon="mdi:chip")
-    # NOPE, this doesn't work!!! No icon settings are made anywhere in main.cpp
-    #
     cv.Optional(CONF_BYPASS_SWITCH): switch.switch_schema(BypassSwitch),
     cv.Optional(CONF_REMEMBER_NEXT_SWITCH): switch.switch_schema(RememberNextSwitch),
     cv.Optional(CONF_CRON_NEXT_SENSOR): text_sensor.text_sensor_schema(CronNextSensor),
     cv.Optional(CONF_CRONTAB_TEXT): text.text_schema(CrontabText),
 }).extend(cv.COMPONENT_SCHEMA)
+
+
+# Adds a 'feature_set' key to the external_components key.
+# EXTENDED_SOURCE_SCHEMA = SOURCE_SCHEMA.extend({
+#     cv.Optional("feature_set", default="basic"): cv.string,
+# })
+
+# --- Global state for managing build_src_filter ---
+_feature_set = "basic"
+_sources_configured = False
 
 
 ### cg.add() puts code at top of main.cpp setup() function.
@@ -114,9 +122,33 @@ cg.add(assign_global_timestamp)
 # This gets called for each item in the dynamic_cron:[] array in the yaml config.
 #
 async def to_code(config):
-#     print("=== DYNAMIC_CRON to_code() START ===")
-#     print("raw validated config keys:", list(config.keys()))
-#     print("raw validated config repr:", config)
+    # print("=== DYNAMIC_CRON to_code() START ===")
+    # print("raw validated config keys:", list(config.keys()))
+    # print("raw validated config repr:", config)
+
+    global _feature_set, _sources_configured
+    
+    # Only configures sources once, using the first instance's feature_set
+    if not _sources_configured:
+        _feature_set = config.get("feature_set", "basic")
+
+        if _feature_set == "tests":
+            # Get the component directory path
+            component_dir = os.path.dirname(__file__)
+            tests_dir = os.path.join(component_dir, "tests")
+            
+            # Add each test source file explicitly
+            if os.path.exists(tests_dir):
+                for filename in os.listdir(tests_dir):
+                    if filename.endswith(('.cpp', '.h')):
+                        # Add the file to be copied to build directory
+                        cg.add_library_file(
+                            os.path.join("tests", filename),
+                            os.path.join(tests_dir, filename)
+                        )
+                        
+        _sources_configured = True
+
     
     schedule_name = str(config.get(CONF_NAME, config.get(CONF_ID)))
     

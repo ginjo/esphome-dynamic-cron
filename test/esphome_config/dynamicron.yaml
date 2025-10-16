@@ -94,6 +94,7 @@ external_components:
 
 dynamic_cron:
  - name: Lawn
+   feature_set: tests
    id: lawn_schedule
    disabled: true
    crontab: "0 * * * * *"
