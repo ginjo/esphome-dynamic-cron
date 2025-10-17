@@ -1,9 +1,13 @@
 // Additional functions for esphome testing.
 // This test file and the dynamic_cron_esphome.h source file will ONLY
-// run on esp32 hardware if you run the 'esphome' test environment.
+// run on esp32 hardware.
+//
 // This will NOT run in the 'native' test environment.
 
 #pragma once
+
+// Don't compile this file unless COMPILE_TESTS is defined.
+#ifdef COMPILE_TESTS
 
 #include <unity.h>
 #include "dynamic_cron_esphome.h"
@@ -67,3 +71,5 @@ void test_inherited_logger_methods(void) {
 } // dynamic_cron
 
 //#include "test_dynamic_cron.h"
+
+#endif  // COMPILE_TESTS

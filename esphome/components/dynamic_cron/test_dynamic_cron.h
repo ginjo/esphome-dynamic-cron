@@ -1,5 +1,8 @@
 #pragma once
 
+// Don't compile this file unless COMPILE_TESTS is defined.
+#ifdef COMPILE_TESTS
+
 #include <unity.h>
 //#include <typeinfo>
 #include "dynamic_cron.h"
@@ -219,3 +222,5 @@ void tearDown(void) {
   delete esphome::dynamic_cron::ScheduleMockInst;
 }
 
+
+#endif  // COMPILE_TESTS

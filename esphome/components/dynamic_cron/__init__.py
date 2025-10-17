@@ -1,7 +1,5 @@
 from time import time
 import yaml
-from esphome.cpp_generator import RawExpression
-import os
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import switch, text, text_sensor
@@ -11,8 +9,8 @@ from esphome.const import (
                       CONF_LAMBDA,
                       CONF_NAME,
                       CONF_MODE,
-                      CONF_ICON
-                      )
+                      CONF_ICON,
+                    )
 
 
 # Imports do not load files or paths into the build directory.                          
@@ -32,15 +30,10 @@ CONF_REMEMBER_NEXT_SWITCH = "remember_next_switch"
 CONF_CRON_NEXT_SENSOR     = "cron_next_sensor"
 CONF_CRONTAB_TEXT         = "crontab_text"
 
-# ESPHome 2025... appears to run on c++17 or maybe even c++20,
-# so we don't need to modify that here.
-#
-# cg.add_build_flag("-std=gnu++17")
-# cg.add_build_flag("-fexceptions")
-# cg.add_platformio_option("build_unflags", ["-fno-exceptions", "-std=gnu++11"])
-#
-# We do still need the -fexceptions however.
-#
+
+### cg.add() puts code at top of main.cpp setup() function.
+### cg.add_global() puts code at top of main.cpp.
+
 cg.add_build_flag("-fexceptions")
 cg.add_platformio_option("build_unflags", ["-fno-exceptions"])
 
@@ -50,19 +43,6 @@ cg.add_library(
     version=None,
 )
 
-# cg.add_library(
-#     name="Preferences",
-#     repository=None,
-#     version=None,
-# )
-
-# We need this, if we want to build/load/run Unity tests within esphome firmware.
-cg.add_library(
-    name="Unity",
-    #repository="https://github.com/ThrowTheSwitch/Unity.git",
-    repository=None,
-    version="^2.5.2",
-)
 
 dynamiccron_ns      = cg.esphome_ns.namespace('dynamic_cron')
 Schedule            = dynamiccron_ns.class_('Schedule', cg.Component)
@@ -82,6 +62,7 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_CRONTAB, default=""):             cv.string,
     cv.Optional(CONF_CLEAR_PREFS, default=False):      cv.boolean,
     cv.Optional(CONF_TIME_FORMAT, default=""):         cv.string,
+    # TODO: Convert this to a var CONF_FEATURE_SET
     cv.Optional("feature_set", default="basic"):       cv.string,
     
     cv.Optional(CONF_BYPASS_SWITCH): switch.switch_schema(BypassSwitch),
@@ -91,18 +72,10 @@ CONFIG_SCHEMA = cv.Schema({
 }).extend(cv.COMPONENT_SCHEMA)
 
 
-# Adds a 'feature_set' key to the external_components key.
-# EXTENDED_SOURCE_SCHEMA = SOURCE_SCHEMA.extend({
-#     cv.Optional("feature_set", default="basic"): cv.string,
-# })
-
 # --- Global state for managing build_src_filter ---
 _feature_set = "basic"
 _sources_configured = False
 
-
-### cg.add() puts code at top of main.cpp setup() function.
-### cg.add_global() puts code at top of main.cpp.
 
 # This is a timestamp of when the firmware was built. We use it to make decisions
 # during the Preferences initialization functions during the first-boot after flashing.
@@ -112,12 +85,14 @@ _sources_configured = False
 assign_global_timestamp = cg.RawStatement(f'esphome::dynamic_cron::TIMESTAMP = {round(time())};\n')
 cg.add(assign_global_timestamp)
 
-# This might not print at the beginning of the main.cpp setup() function, loggin not setup yet.
+# This won't print proprtly at the beginning of the main.cpp setup() function.
 #print_version = cg.RawStatement(f'esphome::dynamic_cron::printVersion();\n')
 #cg.add(print_version)
 
+# For debugging.
 # print(CONFIG_SCHEMA)
 # print(yaml.dump(CONFIG_SCHEMA, default_flow_style=False, sort_keys=False))
+
 
 # This gets called for each item in the dynamic_cron:[] array in the yaml config.
 #
@@ -128,24 +103,21 @@ async def to_code(config):
 
     global _feature_set, _sources_configured
     
-    # Only configures sources once, using the first instance's feature_set
+    # Only configures sources once, using the first instance's feature_set.
+    # We need to do that, since there are global compilation settings,
+    # not per-instance component settings.
     if not _sources_configured:
         _feature_set = config.get("feature_set", "basic")
 
         if _feature_set == "tests":
-            # Get the component directory path
-            component_dir = os.path.dirname(__file__)
-            tests_dir = os.path.join(component_dir, "tests")
+            cg.add_define("COMPILE_TESTS")
             
-            # Add each test source file explicitly
-            if os.path.exists(tests_dir):
-                for filename in os.listdir(tests_dir):
-                    if filename.endswith(('.cpp', '.h')):
-                        # Add the file to be copied to build directory
-                        cg.add_library_file(
-                            os.path.join("tests", filename),
-                            os.path.join(tests_dir, filename)
-                        )
+            cg.add_library(
+                name="Unity",
+                #repository="https://github.com/ThrowTheSwitch/Unity.git",
+                repository=None,
+                version="^2.5.2",
+            )
                         
         _sources_configured = True
 
@@ -181,8 +153,7 @@ async def to_code(config):
     cg.add(var.setTimeFormatDefault(config[CONF_TIME_FORMAT]))
     
     
-    
-    ### Entities/Controls/Display ###
+    ###  ESPHome Entities/Controls/Display  ###
     
     # Bypass switch
     if CONF_BYPASS_SWITCH in config:
