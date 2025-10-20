@@ -2,7 +2,7 @@
 // This test file and the dynamic_cron_esphome.h source file will ONLY
 // run on esp32 hardware.
 //
-// This will NOT run in the 'native' test environment.
+// This will NOT run in the 'native' test environment (but test_dynamic_cron.h will).
 
 #pragma once
 
@@ -12,9 +12,6 @@
 #include <unity.h>
 #include "dynamic_cron_esphome.h"
 
-// We now include this at the bottom, because it needs this file loaded first.
-// #include "test_dynamic_cron.h"
-
 
 namespace esphome {
 namespace dynamic_cron {
@@ -23,43 +20,69 @@ namespace dynamic_cron {
 class ScheduleEsphomeMock : public Schedule {
 public:
     
-  ScheduleEsphomeMock() :
-    Schedule("test-name", "test-id", []() { std::cout << "Test lambda called and running!\n"; return true; })
+  ScheduleEsphomeMock(std::time_t test_id = std::time(NULL)) :
+    Schedule("test-name", std::to_string(test_id), []() { std::cout << "Test lambda called and running!\n"; return true; })
   {}
   
-  // auto getPrefs() {
-  //   return loadPrefs();
-  // }
+  std::time_t get_initial_stamp() {
+    LOGD("TEST TIMESTAMP: %lld, initial_stamp: %lld", TIMESTAMP, initial_stamp);
+    return initial_stamp;
+  }
   
-};
+  void set_initial_stamp(std::time_t val) {
+    initial_stamp_pref.init(schedule_id);
+    initial_stamp_pref.save(val);
+  }
+  
+  bool get_bypass() {
+    return bypass;
+  }
+  
+  bool get_bypass_default() {
+    return bypass_default;
+  }
+  
+};  // class ScheduleEsphomeMock
 
 
 // TESTS - covers portions of dyncamic_cron that interact directly with esphome functions and classes.
 
-void test_prefs_initialized(void) {
+void test_prefs_initial(void) {
   ScheduleEsphomeMock schedule;
-  // auto prefs = schedule.getPrefs();
-  // TEST_ASSERT_TRUE(prefs.initialized > 0);
+  //schedule.set_initial_stamp(0); // Should we test with this or no?
+  schedule.setup();
+  TEST_ASSERT_TRUE(schedule.get_initial_stamp() == esphome::dynamic_cron::TIMESTAMP);
 }
 
-// Change this, or add another test, to ...has_matching_timestamp
-void test_prefs_updates_timestamp(void) {
-  // TODO: This won't test correctly if run with esphome build.
-  // It will only work in the test environments.
+void test_prefs_preserve_existing(void) {
   ScheduleEsphomeMock schedule;
-  TIMESTAMP += 300;
-  // auto prefs = schedule.getPrefs();
-  // TEST_ASSERT_TRUE(TIMESTAMP == 1600000300);
+  schedule.set_initial_stamp(123456);
+  schedule.setup();
+  TEST_ASSERT_TRUE(schedule.get_initial_stamp() != esphome::dynamic_cron::TIMESTAMP);
 }
 
-// Prefs timestamp should match firmware TIMESTAMP
-void test_prefs_matches_timestamp(void) {
+void test_prefs_clear_existing(void) {
   ScheduleEsphomeMock schedule;
-  // auto prefs = schedule.getPrefs();
-  // TEST_ASSERT_TRUE(TIMESTAMP == prefs.initialized);
+  schedule.set_initial_stamp(456789);
+  schedule.setClearPrefs(true);
+  schedule.setup();
+  TEST_ASSERT_TRUE(schedule.get_initial_stamp() == esphome::dynamic_cron::TIMESTAMP);
 }
 
-// Prefs timestamp should match firmware TIMESTAMP
+void test_prefs_unchanged(void) {
+  ScheduleEsphomeMock schedule;
+  schedule.set_initial_stamp(esphome::dynamic_cron::TIMESTAMP);
+  schedule.setup();
+  TEST_ASSERT_TRUE(schedule.get_initial_stamp() == esphome::dynamic_cron::TIMESTAMP);
+}
+
+void test_bypass_prefs(void) {
+  ScheduleEsphomeMock schedule;
+  schedule.setup();
+  TEST_ASSERT_TRUE(schedule.get_bypass() == schedule.get_bypass_default());
+}
+
+// Schedule inherits from logger. TODO: improve this.
 void test_inherited_logger_methods(void) {
   ScheduleEsphomeMock schedule;
   schedule.LOGD("Test inherited logger methods");
@@ -70,6 +93,5 @@ void test_inherited_logger_methods(void) {
 } // esphome
 } // dynamic_cron
 
-//#include "test_dynamic_cron.h"
-
 #endif  // COMPILE_TESTS
+

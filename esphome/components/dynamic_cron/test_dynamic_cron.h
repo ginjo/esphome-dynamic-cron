@@ -1,5 +1,9 @@
 #pragma once
 
+// This test file will run in the 'native' test environment, which doesn't
+// depend on any esp32 libraries or hardware.
+
+
 // Don't compile this file unless COMPILE_TESTS is defined.
 #ifdef COMPILE_TESTS
 
@@ -47,8 +51,10 @@ public:
   // Cuz cronLoop() is protected.
   void callCronLoop() {
     cronLoop();
-  }    
-};
+  }
+  
+};  // class ScheduleMock
+
 
 // Declards a ScheduleMock object with default constructor.
 // This will be used during each test run. See setUp().
@@ -149,8 +155,8 @@ void test_schedule_cronLoop(void) {
 
 // RUNNER
 
-int TEST_RUN_COUNT = 0;
-int TEST_RUN_MAX   = 1;
+// int TEST_RUN_COUNT = 0;
+// int TEST_RUN_MAX   = 1;
 
 int DynamicCronTestRunner(void) {
   std::cout << "BEGIN DYNAMIC CRON TESTS\n";
@@ -167,8 +173,11 @@ int DynamicCronTestRunner(void) {
 
   // Runs these tests in esp environment and esphome build.
   #if !defined(IS_NATIVE) || IS_NATIVE != 1
-    RUN_TEST(test_prefs_initialized);
-    RUN_TEST(test_prefs_matches_timestamp);
+    RUN_TEST(test_prefs_initial);
+    RUN_TEST(test_prefs_preserve_existing);
+    RUN_TEST(test_prefs_clear_existing);
+    RUN_TEST(test_prefs_unchanged);
+    RUN_TEST(test_bypass_prefs);
     RUN_TEST(test_inherited_logger_methods);
   #endif
   
@@ -181,15 +190,21 @@ int DynamicCronTestRunner(void) {
   return UNITY_END();
 }
 
-int RunDynamicCronTests(int max = 0) {
-  if (max > 0) { TEST_RUN_MAX = max; }
+// int RunDynamicCronTests(int max = 0) {
+//   if (max > 0) { TEST_RUN_MAX = max; }
+// 
+//   if (TEST_RUN_COUNT < TEST_RUN_MAX) {
+//     TEST_RUN_COUNT += 1;
+//     return DynamicCronTestRunner();
+//   }
+//   else {
+//     return 1;
+//   }
+// }
 
-  if (TEST_RUN_COUNT < TEST_RUN_MAX) {
-    TEST_RUN_COUNT += 1;
-    return DynamicCronTestRunner();
-  }
-  else {
-    return 1;
+void RunDynamicCronTests(int max = 1) {
+  for (int i = 0; i < max; i++) {
+    DynamicCronTestRunner();
   }
 }
 

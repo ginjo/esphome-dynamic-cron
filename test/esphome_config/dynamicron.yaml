@@ -7,10 +7,7 @@
 
 esphome:
   name: dynamicron
-  friendly_name: Dynamic Cron Scheduler Test Example
-  # includes:
-  #   - "/DynamicCron/esphome/components/dynamic_cron/test_dynamic_cron_esphome.h"
-  #   #- "dynamicron_tests.h"
+  friendly_name: Dynamic Cron Scheduler Test Runner and App
   on_boot:
     - then:
       - logger.log:
@@ -21,8 +18,19 @@ esphome:
           # must be literal string, not templatable
           tag: "dynamicron-test-project"
       #- lambda: |-
+      #    # This is now printed automatically when dynamic_cron loads, in setup().
       #    esphome::dynamic_cron::printVersion();
 
+preferences:
+  # If you are running the test suite on actual esp32 hardware,
+  # it is recommended that you disable flash writes for preference storage.
+  # This will reduce unnecessary wear on flash memory.
+  #
+  # This DOESN'T WORK but also doesn't raise an error.
+  # ESPHome docs say it works.
+  #flash_write_interval: never
+  # 
+  flash_write_interval: 9999min
 
 esp32:
   board: esp32doit-devkit-v1
@@ -73,10 +81,10 @@ time:
       - 1.pool.ntp.org
       - 2.pool.ntp.org
     id: esp_time
-    #on_time_sync:
-    #  then:
-    #    - lambda:
-    #        esphome::dynamic_cron::RunDynamicCronTests(3);
+    on_time_sync:
+     then:
+       - lambda:
+           esphome::dynamic_cron::RunDynamicCronTests(1);
 
 
 ### CUSTOM / EXTERNAL COMPONENTS
@@ -94,7 +102,9 @@ external_components:
 
 dynamic_cron:
  - name: Lawn
-   #feature_set: tests
+    # This will compile-in the tests, so can call them in on_time_sync, or on_boot (not recommended).
+    # Note that the tests are not schedule-specific, they are compiled for the entire component.
+   feature_set: tests
    id: lawn_schedule
    disabled: true
    crontab: "0 * * * * *"

@@ -52,6 +52,11 @@
 ###  the esp32? Or should we mock all esp-dependent and any hardware-dependent classes and functions, so we
 ###  can test on the native host (linux)?
 
+
+# NOTE: This native test can run using the .platformio directory from a
+# legit esphome build environment. However, you may have to `esphome clean <config-file>`
+# before running this test for 'native' environment.
+
 pio test --without-uploading -c test/platformio.ini ${@--e native}
 #
 # If you want to suppress the error about not finding the serial port,
@@ -65,14 +70,12 @@ pio test --without-uploading -c test/platformio.ini ${@--e native}
 #   pio run --target clean -e native -c test/platformio.ini
 #
 # NOTE: I don't think we can use the 'esphome' test run any more.
-#       Instead, we should create a test project in our esphome directory that uses this component,
-#       and compile from there using `esphome compile config/test_dynamic_cron.yaml.
-#       The same dynamic_cron esphome tests can be run from the on-boot lambda.
+#       Instead, use the esphome test config in test/esphome_config/,
+#       and compile with `esphome compile test/esphome_config/dynamicron.yaml.
+#       Then install the resulting firmware on your esp32 and watch the logs.
 #
 #       The reason for this is that esphome now (2024.12) uses its own fork of some libraries installed in .platformio.
 #       Platformio will overwrite the esphom-generated .platformio directory, and tests will fail.
-#
-# TODO: Create a test esphome project here within this component's directory.
 #
 # See here for WokWi online esp32 simulator, allowing uploaded firmware runs.
 #   https://wokwi.com/projects/305457271083631168

@@ -137,7 +137,13 @@ public:
     // Init prefs timestamp
     initial_stamp_pref.init(schedule_id);
     initial_stamp = initial_stamp_pref.load_with_default(TIMESTAMP);
-    if (clear_prefs && initial_stamp != TIMESTAMP) {
+    if (initial_stamp != TIMESTAMP &&
+        (
+          clear_prefs ||
+          TIMESTAMP == 0 ||
+          difftime(TIMESTAMP, initial_stamp) < 0
+        )
+    ) {
       initial_stamp = TIMESTAMP;
       initial_stamp_pref.save(initial_stamp);
     }
