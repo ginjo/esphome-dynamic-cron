@@ -55,7 +55,9 @@
 
 # NOTE: This native test can run using the .platformio directory from a
 # legit esphome build environment. However, you may have to `esphome clean <config-file>`
-# before running this test for 'native' environment.
+# before running this test for 'native' environment. Otherwise the build may fail.
+printf 'If this test fails in 'native' environment, you may need to clear\n'
+printf 'the build from the esphome environment with `esphome clean <config-file>`\n\n'
 
 pio test --without-uploading -c test/platformio.ini ${@--e native}
 #

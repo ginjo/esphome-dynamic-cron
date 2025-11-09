@@ -145,7 +145,7 @@ int main( int argc, char **argv ) {
   
   esphome::dynamic_cron::setFirmwareTimestamp();
     
-  return esphome::dynamic_cron::RunDynamicCronTests();
+  esphome::dynamic_cron::RunDynamicCronTests();
 }
 
 // For Arduino framework

@@ -30,6 +30,7 @@ preferences:
   # ESPHome docs say it works.
   #flash_write_interval: never
   # 
+  # This does NOT prevent an initial mass-write in the first couple minutes after boot.
   flash_write_interval: 9999min
 
 esp32:
