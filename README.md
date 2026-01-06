@@ -21,19 +21,20 @@
 
 ## Requirements
   
-  DynamicCron version 0.2.x has been refactored to work on ESPHome version 2025.x.x
-  and greater. If you're using ESPHome version 2024.11.x or earlier, use DynamicCron
+  DynamicCron version 0.3.0 (and 0.2.x) works on ESPHome version 2025.x.x.
+  If you are using ESPHome version 2024.11.x or earlier, use DynamicCron
   version 0.1.1.
   
-  This component has two external dependencies that are automatically managed:
+  This component has one external dependency that is automatically managed:
   1. [Croncpp](https://github.com/mariusbancila/croncpp) for parsing cron expressions
-  2. [Preferences](https://docs.espressif.com/projects/arduino-esp32/en/latest/api/preferences.html) for storing settings to esp32 NVS
   
-  See below for more info on the Croncpp and Preferences libraries.
+  See below for more info on the Croncpp library.
   
   There are three things to be aware of when using this library:
   
-  * The ESPHome firmware must be compiled using the Arduino framework, not the ESP-IDF framework.
+  * ~~The ESPHome firmware must be compiled using the Arduino framework, not the ESP-IDF framework.~~
+    Unofficially, DynamicCron no longer requires the Arduino framework,
+    however it has not yet been tested against the ESP-IDF framework.
   
   * You should define a `time` component in your ESPHome yaml config, as
     scheduling software needs a reliable time source.
