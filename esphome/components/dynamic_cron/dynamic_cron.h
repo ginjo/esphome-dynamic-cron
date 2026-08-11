@@ -262,9 +262,6 @@ public:
         (long long)timeNow(),
         timeToString(timeNow()).c_str()
       );
-      
-
-
     }
   
     // else {

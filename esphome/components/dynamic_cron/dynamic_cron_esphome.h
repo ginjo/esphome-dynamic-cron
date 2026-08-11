@@ -283,7 +283,7 @@ public:
   std::string setCrontab(std::string str) override {
     // Note that sched-core setCrontab() always calls setCronNext().
     std::string rslt = ScheduleCore::setCrontab(str);
-    updateEntityData(crontab_text, last_crontab_text_state,rslt);
+    updateEntityData(crontab_text, last_crontab_text_state, rslt);
     crontab_pref.save(rslt);
     return rslt;
   }
