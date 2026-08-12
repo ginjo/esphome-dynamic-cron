@@ -1,9 +1,14 @@
 from time import time
+import logging
 import yaml
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import switch, text, text_sensor
+from esphome.components.time import detect_tz
 from esphome.helpers import sanitize, snake_case
+
+_LOGGER = logging.getLogger(__name__)
+
 from esphome.const import (
                       CONF_ID,
                       CONF_LAMBDA,
@@ -151,6 +156,17 @@ async def to_code(config):
     cg.add(var.setCrontabDefault(config[CONF_CRONTAB]))
     cg.add(var.setClearPrefs(config[CONF_CLEAR_PREFS]))
     cg.add(var.setTimeFormatDefault(config[CONF_TIME_FORMAT]))
+
+    # Auto-detect POSIX TZ string so libc localtime/mktime (used by croncpp) are correct.
+    try:
+        tz_str = detect_tz()
+        _LOGGER.info("dynamic_cron: auto-detected timezone '%s'", tz_str)
+        cg.add(var.setTimezone(tz_str))
+    except cv.Invalid:
+        _LOGGER.warning(
+            "dynamic_cron: could not auto-detect timezone. "
+            "Scheduling may use wrong time offset."
+        )
     
     
     ###  ESPHome Entities/Controls/Display  ###

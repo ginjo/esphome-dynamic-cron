@@ -18,6 +18,7 @@
 #include <iostream>
 #include <string>
 #include <ctime>
+#include <cstdlib>
 
 #include "esphome/core/component.h"
 #include "esphome/core/application.h"
@@ -74,6 +75,10 @@ protected:
 
   bool                                 setup_complete;
 
+  // POSIX TZ string for libc timezone sync (needed by croncpp).
+  std::string                          timezone_str_;
+  bool                                 timezone_applied_{false};
+
 public:
   double                               cron_loop_interval; // seconds
   //double                              save_prefs_interval; // seconds
@@ -126,6 +131,14 @@ public:
 
   // Esphome Component overrides
   void setup() override {
+
+    // Sync libc timezone so localtime()/mktime() (used by croncpp) are correct.
+    if (!timezone_applied_ && !timezone_str_.empty()) {
+      setenv("TZ", timezone_str_.c_str(), 1);
+      tzset();
+      timezone_applied_ = true;
+      LOGI("Applied POSIX timezone: %s", timezone_str_.c_str());
+    }
 
     if (!version_logged) {
       printVersion();
@@ -243,6 +256,10 @@ public:
   void setClearPrefs(bool val) {
     clear_prefs = val;
   }
+
+  void setTimezone(const std::string &tz) {
+    timezone_str_ = tz;
+  }
   
   
   // Overides base setters to include preference storage.
@@ -301,6 +318,8 @@ protected:
   //       them if necessary for debugging.
   //
   bool timeIsValid(std::time_t now = std::time(NULL)) {
+    if (!timezone_applied_) return false;
+
     //LOGV("Schedule::timeIsValid() calling ESPTime::from_epoch_local()");
     ESPTime esp_time = ESPTime::from_epoch_local(now);
 
